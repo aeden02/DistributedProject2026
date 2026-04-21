@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 public class FittingRoomServer {
@@ -10,19 +11,23 @@ public class FittingRoomServer {
 	//static final int MAX_INSIDE = 1;
 	//static final int MAX_OUTSIDE = 2; 
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		//port
+        int port = 50000;
 		//startServer
+        startServer(port);
 	}
 	
-	private static void startServer(int port) {
+	//Starts the server given this port number.
+	private static void startServer(int port) throws IOException {
 		//ServerSocket
+        ServerSocket serv = new ServerSocket(port);
 		
 		while(true) {
 			//accept client 
 		}
 	}
-	
+	//Handling the client.
 	private static void handleClient(Socket socket) {
 		try {
 			//1. Try to enter room
