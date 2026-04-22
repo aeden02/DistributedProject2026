@@ -2,10 +2,25 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+class ClientHandler implements Runnable{
+	private Socket client;
+	public String ipAddress;
+
+	public ClientHandler(Socket client) {
+		this.client = client;
+		this.ipAddress = client.getInetAddress().getHostAddress()+"";
+	}
+
+	public void run(){
+		System.out.println("A client connected to the fitting room server.");
+	}
+}
+
 public class FittingRoomServer {
 	//Shared state
 	static int inside = 0; 
 	static int outside = 0;
+	ClientHandler client;
 	
 	//THESE PROLLY NEED TO BE CHANGED. -AE
 	//static final int MAX_INSIDE = 1;
@@ -13,18 +28,32 @@ public class FittingRoomServer {
 	
 	public static void main(String[] args) throws IOException {
 		//port
-        int port = 50000;
-		//startServer
+
+		//int port = getPortFromArgs(args[0]);
+		int port = 50000;
         startServer(port);
 	}
 	
 	//Starts the server given this port number.
 	private static void startServer(int port) throws IOException {
+		ClientHandler client;
 		//ServerSocket
-        ServerSocket serv = new ServerSocket(port);
+        ServerSocket server = new ServerSocket(port);
 		
+		System.out.println("Fitting Room Server is now starting!");
 		while(true) {
-			//accept client 
+			//accept client
+			try {
+				
+				Socket clientSocket = server.accept();
+				ClientHandler clientObject = new ClientHandler(clientSocket);
+				Thread t = new Thread(clientObject);
+				t.start();
+
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			
 		}
 	}
 	//Handling the client.
@@ -39,6 +68,7 @@ public class FittingRoomServer {
 		}
 	}
 	
+	//Allows one thread in the method with synchroinized
 	private static synchronized boolean enterRoom(Socket socket) throws Exception {
 		//CASE 1: FULL = REJECT
 
@@ -62,9 +92,10 @@ public class FittingRoomServer {
 		//send success message
 	}
 	
-	private static int getPortFromArgs(String[] args) {
+	private static int getPortFromArgs(String args) {
 		//parse port
-		return -1; 
+		int port = Integer.parseInt(args);
+		return port; 
 	}
 
     
