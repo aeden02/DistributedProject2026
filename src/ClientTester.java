@@ -1,3 +1,5 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
@@ -14,7 +16,13 @@ public class ClientTester {
 
         try {
             Socket socket = new Socket(host, port);
-            PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader keyInput = new BufferedReader(new InputStreamReader(System.in));
+            BufferedReader readfromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            
+            String str = keyInput.readLine();
+            out.println(str);
+            System.out.println(readfromServer.readLine());
         }catch(Exception ex) {
             ex.printStackTrace();
         }
