@@ -30,7 +30,7 @@ public class FittingRoomServer {
 		//port
 
 		//int port = getPortFromArgs(args[0]);
-		int port = 50000;
+		int port = 50001;
         startServer(port);
 	}
 	

@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Client",
+            "request": "launch",
+            "mainClass": "Client",
+            "projectName": "DSFinalProject_15e8c2b8"
+        },
+        {
+            "type": "java",
             "name": "CentralServer",
             "request": "launch",
             "mainClass": "CentralServer",

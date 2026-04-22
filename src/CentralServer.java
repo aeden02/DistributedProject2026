@@ -1,4 +1,7 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -23,48 +26,65 @@ public class CentralServer {
 	static List<RoomInfo> rooms = new ArrayList(); 
 	//how get room information from the fitting room. 
 	public static void main(String[] args) {
-		System.out.println("Server starting..."); 
+		System.out.println("CentralServer starting..."); 
 
 		//1. Initialize rooms
 		//initializeRooms();
 		
 		//2. Start server socket
-		System.out.println("STARTING SERVER SOCKETS");
 		startServerSockets(); 
 	}
 	
-	// private static void initializeRooms() {
-	// 	//Add rooms(host, port, capacity)
-	// 	//need information from fitting room 
-	// 	//GetRoomInfomartion.  
-	// 	RoomInfo r1 = new RoomInfo("localhost",5001,3); 
-	// 	rooms.add(r1); 
+	private static void initializeRooms() {
+		//Add rooms(host, port, capacity)
+		//need information from fitting room 
+		//GetRoomInfomartion.  
 
-	// 	System.out.println("Rooms initalized: " + rooms.size()); 
-	// 	System.out.println(r1.host + " " + r1.port + " " + r1.cap); 
-	// }
+	}
 	
 	private static void startServerSockets() {
 	
 		try{
-			//serversocket for client
-			ServerSocket server = new ServerSocket(50000);
-			System.out.println("Server running on port 50000..."); 
+		//socket for fittingroom (CentralServer connects to FittingRoom)
+			Socket fitroomSocket = new Socket("localhost",50001); 
+			System.out.println("Connected to FittingRoom"); 
 
-			//serversocket for fittingroom 
-			ServerSocket fitroom = new ServerSocket(50001); 
-			System.out.println("Server running on port 50001..."); 
+		//Input&Output for fittingroom 
+			BufferedReader fitIn = new BufferedReader(new InputStreamReader(fitroomSocket.getInputStream()));
+			PrintWriter fitOut = new PrintWriter(fitroomSocket.getOutputStream(),true); 
+
+		//serversocket for client(Client connects to CentralServer)
+			ServerSocket server = new ServerSocket(50000);
+			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
+
 		
 			while(true) {
 			//accept client
-			Socket socket = server.accept(); 
-			System.out.println("Client connected!"); 
+			Socket clientSocket = server.accept(); 
+			System.out.println("CENTRAL: Client connected!"); 
 
-			//accept fittingroom 
-			Socket fitRoomSocket = fitroom.accept(); 
-			System.out.println("Fitting room connected!"); 
-		
-			//create new thread 
+			BufferedReader clientIn = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			PrintWriter clientOut = new PrintWriter(clientSocket.getOutputStream(), true); 
+
+			//I am unsure if we actually need this section.
+			//was trying to be able to send messages across
+			//and it didn't work. - AE 
+			String request; 
+			while((request = clientIn.readLine())!=null){
+				System.out.println("Client says: " + request); 
+
+				//send to fittingroom 
+				fitOut.println("REQUEST_ROOM"); 
+
+				//get response
+				String response = fitIn.readLine(); 
+				System.out.println("Fitting room says: " + response); 
+
+				//send back to client
+				clientOut.println(response); 
+			}
+			//handle each client in a new thread
+			
 
 			}
 		}catch(IOException e){

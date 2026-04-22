@@ -9,7 +9,7 @@ public class Client{
     public Client(String serverIP, int port){
         try{
             socket = new Socket(serverIP,port);
-            System.out.println("Connected to Server");
+            System.out.println("CLIENT: Connected to Server");
             br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             pw = new PrintWriter(socket.getOutputStream(),true);
 
@@ -29,18 +29,18 @@ public class Client{
                 }
 
             }catch(IOException e){
-                System.out.println("Disconnected from Server");
+                System.out.println("CLIENT: Disconnected from Server");
             }
         }
     }
 
     private void responseHandler(String response){
-        
+
     }
 
     //When client is trying to get into a fitting room
     public void requestFittingRoom(){
-        
+
     }
 
     //When client is done with fitting room
@@ -59,10 +59,12 @@ public class Client{
     
     public static void main(String[] args) {
         String serverIP = "127.0.0.1";
-        int port = 5000;
+        int port = 50000;
 
+        System.out.println("CLIENT: Starting client.."); 
         Client client = new Client(serverIP, port);
         client.requestFittingRoom();
+        
     }
 
    
