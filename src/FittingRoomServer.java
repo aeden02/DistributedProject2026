@@ -30,13 +30,16 @@ public class FittingRoomServer {
 		//port
 
 		//int port = getPortFromArgs(args[0]);
-		int port = 50001;
+		int port = 50002;
         startServer(port);
 	}
 	
 	//Starts the server given this port number.
 	private static void startServer(int port) throws IOException {
 		ClientHandler client;
+
+		Socket central = new Socket("localhost", 50001); 
+		System.out.println("Fitting Room Server connected to Central Server on port 50001...");
 		//ServerSocket
         ServerSocket server = new ServerSocket(port);
 		

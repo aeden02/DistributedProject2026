@@ -23,7 +23,7 @@ public class CentralServer {
 	}
 	
 	//List of rooms
-	static List<RoomInfo> rooms = new ArrayList(); 
+	//static List<RoomInfo> rooms = new List<>; 
 	//how get room information from the fitting room. 
 	public static void main(String[] args) {
 		System.out.println("CentralServer starting..."); 
@@ -45,20 +45,23 @@ public class CentralServer {
 	private static void startServerSockets() {
 	
 		try{
-		//socket for fittingroom (CentralServer connects to FittingRoom)
-			Socket fitroomSocket = new Socket("localhost",50001); 
-			System.out.println("Connected to FittingRoom"); 
-
-		//Input&Output for fittingroom 
-			BufferedReader fitIn = new BufferedReader(new InputStreamReader(fitroomSocket.getInputStream()));
-			PrintWriter fitOut = new PrintWriter(fitroomSocket.getOutputStream(),true); 
+		//serversocket for fittingroom (FittingRoom connects to CentralServer)
+			ServerSocket fitroomSocket = new ServerSocket(50001); 
+			System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
 			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
 
-		
+
 			while(true) {
+			//accept fittingroom 
+			Socket fittingRooom	= fitroomSocket.accept(); 
+			System.out.println("CENTRAL: Fitting Room Connected!"); 
+
+			BufferedReader fitIn = new BufferedReader(new InputStreamReader(fittingRooom.getInputStream()));
+			PrintWriter fitOut = new PrintWriter(fittingRooom.getOutputStream(), true);
+				
 			//accept client
 			Socket clientSocket = server.accept(); 
 			System.out.println("CENTRAL: Client connected!"); 
@@ -70,7 +73,7 @@ public class CentralServer {
 			//was trying to be able to send messages across
 			//and it didn't work. - AE 
 			String request; 
-			while((request = clientIn.readLine())!=null){
+			while(!(request = clientIn.readLine()).equalsIgnoreCase("EXIT")){
 				System.out.println("Client says: " + request); 
 
 				//send to fittingroom 
@@ -85,8 +88,11 @@ public class CentralServer {
 			}
 			//handle each client in a new thread
 			
+			//handle each FittingRoom in a new thread
 
 			}
+
+			
 		}catch(IOException e){
 			e.printStackTrace();
 		}
