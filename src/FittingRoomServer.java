@@ -32,7 +32,7 @@ public class FittingRoomServer {
 
 		//int port = getPortFromArgs(args[0]);
 		int port = 50000;
-		int numberOfFittingRooms = Integer.parseInt(args[1]);
+		//int numberOfFittingRooms = Integer.parseInt(args[1]);
 
         startServer(port);
 	}
