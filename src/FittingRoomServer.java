@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.http.WebSocket;
 
 class ClientHandler implements Runnable{
 	private Socket client;
@@ -31,6 +32,8 @@ public class FittingRoomServer {
 
 		//int port = getPortFromArgs(args[0]);
 		int port = 50000;
+		int numberOfFittingRooms = Integer.parseInt(args[1]);
+
         startServer(port);
 	}
 	
