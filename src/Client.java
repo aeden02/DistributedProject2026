@@ -35,27 +35,60 @@ public class Client{
     }
 
     private void responseHandler(String response){
-        
+        System.out.println("Server: " + response);
+
+        if (response.equals("Room Allocated")) {
+            System.out.println("Entering fitting room...");
+            simulateFittingRoomUse();
+            //What happens if the client is given a fitting room
+
+        } else if (response.equals("Wait")) {
+            System.out.println("Waiting for available fitting room...");
+            //What happens if a client is in the waiting room because all fitting rooms are full
+
+        } else if (response.equals("Room Available")) {
+            System.out.println("Room now available, requesting again...");
+            requestFittingRoom();
+            //what happens when rooms are available
+
+        } else {
+            System.out.println("Come back later");
+            //what happens if waiting room and fitting rooms are all full
+        }
     }
 
     //When client is trying to get into a fitting room
     public void requestFittingRoom(){
-        
+        pw.println("Request Room");
+        System.out.println("Requested fitting room");
     }
 
     //When client is done with fitting room
     public void releaseFittingRoom(){
-        
+        pw.println("Release Room");
+        System.out.println("Released Fitting Room");
     }
 
     //When client no longer wants to contact central server
     public void exit(){
-        
+        pw.println("Exit");
+        try{
+            socket.close();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
     }
 
     private void simulateFittingRoomUse(){
-        
+        try{
+            Thread.sleep(3000);//simulates the time tha someone would use a fitting room
+            releaseFittingRoom();
+            exit();
+        }catch(InterruptedException e){
+            e.printStackTrace();
+        }
     }
+
     
     public static void main(String[] args) {
         String serverIP = "127.0.0.1";
