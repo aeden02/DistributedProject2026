@@ -80,23 +80,45 @@ public class Client{
     }
 
     private void simulateFittingRoomUse(){
-        try{
-            Thread.sleep(3000);//simulates the time tha someone would use a fitting room
-            releaseFittingRoom();
-            exit();
-        }catch(InterruptedException e){
-            e.printStackTrace();
-        }
+    	try {
+    		int sleepTime = (int)(Math.random() * 1000);
+    		Thread.sleep(sleepTime);
+
+    		releaseFittingRoom();
+    		exit();
+
+		} catch (InterruptedException e) {
+    		e.printStackTrace();
+		}
     }
 
     
     public static void main(String[] args) {
         String serverIP = "127.0.0.1";
-        int port = 5000;
+    	int port = 5000;
 
-        Client client = new Client(serverIP, port);
-        client.requestFittingRoom();
-    }
+    	int clientId = 1;
+
+    	while (true) {
+        	int id = clientId++;
+
+    		new Thread(new Runnable() {
+    			@Override
+    			public void run() {
+        			Client client = new Client(serverIP, port);
+        			System.out.println("Customer #" + id + " enters the system");
+        			client.requestFittingRoom();
+    			}
+			}).start();
+
+        	try {
+            	Thread.sleep((int)(Math.random() * 1000));//this is the delay for the random entrance time
+        	} catch (InterruptedException e) {
+            	e.printStackTrace();
+        	}
+    	}
+
+	}
 
    
 }
