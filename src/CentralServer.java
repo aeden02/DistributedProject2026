@@ -1,6 +1,8 @@
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -56,19 +58,35 @@ public class CentralServer {
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
 			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
-
 		
 			while(true) {
 			//accept client
-			Socket clientSocket = server.accept(); 
-			System.out.println("CENTRAL: Client connected!"); 
+			//Socket clientSocket = server.accept(); 
+			//System.out.println("CENTRAL: Client connected!"); 
 
-			BufferedReader clientIn = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-			PrintWriter clientOut = new PrintWriter(clientSocket.getOutputStream(), true); 
+			//BufferedReader clientIn = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			//PrintWriter clientOut = new PrintWriter(clientSocket.getOutputStream(), true); 
 
 			//I am unsure if we actually need this section.
 			//was trying to be able to send messages across
 			//and it didn't work. - AE 
+
+			ClientHandler client;
+			try {
+                client = new ClientHandler(server.accept(), fitroomSocket);
+                    
+                Thread t = new Thread(client);
+
+                String message = "Thread " + t.getName() + " has been assigned to this client";
+				
+				System.out.println(message);
+
+			} catch (Exception e) {
+                    server.close();
+                    e.printStackTrace();
+			}
+
+			/*
 			String request; 
 			while((request = clientIn.readLine())!=null){
 				System.out.println("Client says: " + request); 
@@ -82,7 +100,9 @@ public class CentralServer {
 
 				//send back to client
 				clientOut.println(response); 
+				
 			}
+			*/
 			//handle each client in a new thread
 			
 
@@ -90,6 +110,54 @@ public class CentralServer {
 		}catch(IOException e){
 			e.printStackTrace();
 		}
+	}
+
+	public static class ClientHandler implements Runnable{
+		Socket client;
+		Socket fit;
+
+		public ClientHandler(Socket client, Socket fit){
+			this.client = client;
+			this.fit = fit;
+		}
+
+        @Override
+        public void run() {
+			System.out.println("running...");
+            try{
+                InputStream in = client.getInputStream();
+                OutputStream out = client.getOutputStream();
+
+                BufferedReader clientIn = new BufferedReader(new InputStreamReader(in));
+                PrintWriter clientOut = new PrintWriter(out,true);
+                
+				//BufferedReader fitIn = new BufferedReader(new InputStreamReader(fit.getInputStream()));
+				PrintWriter fitOut = new PrintWriter(fit.getOutputStream(),true); 
+
+                String request;
+				while((request = clientIn.readLine())!=null){
+					//Client should request a fitting room which connects them to a fitting server, wait for a bit, then exit
+
+					System.out.println("Client says: " + request); 
+
+					//send to fittingroom 
+					fitOut.println("REQUEST_ROOM"); 
+
+					//get response
+					String response = clientIn.readLine(); 
+					System.out.println("Fitting room says: " + response); 
+
+					//send back to client
+					clientOut.println(response); 
+				}
+
+			}
+			catch(Exception e){
+				e.printStackTrace();
+			}
+        }
+
+
 	}
 	
 	// public static void handleClient(Socket socket) {
