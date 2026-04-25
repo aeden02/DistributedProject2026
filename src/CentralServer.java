@@ -6,8 +6,6 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CentralServer {
 
@@ -74,9 +72,10 @@ public class CentralServer {
 			//was trying to be able to send messages across
 			//and it didn't work. - AE 
 
+			//Threaded Clients NOT TESTED YET
 			ClientHandler client;
 			try {
-                client = new ClientHandler(server.accept(), fitroomSocket);
+                client = new ClientHandler(server.accept(), fittingRooom);
                     
                 Thread t = new Thread(client);
 
@@ -118,6 +117,7 @@ public class CentralServer {
 		}
 	}
 
+	//This is the Client handler class where all the clients will run the thread NOT TESTED YET
 	public static class ClientHandler implements Runnable{
 		Socket client;
 		Socket fit;
