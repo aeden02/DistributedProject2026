@@ -5,75 +5,27 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.http.WebSocket;
 
-/*
-
 class ClientHandler implements Runnable{
-	private Socket client;
+	public Socket s;
 	public String ipAddress;
 
-	public ClientHandler(Socket client) {
-		this.client = client;
-		this.ipAddress = client.getInetAddress().getHostAddress()+"";
+	int seconds = 5;
+	int fittingTime = seconds * 1000;
+
+
+	public ClientHandler(Socket s) {
+		this.s = s;
+		this.ipAddress = s.getInetAddress().getHostAddress()+"";
 	}
 
 	public void run(){
-		System.out.println("A client connected to the fitting room server.");
-	}
-}
- */
-public class FittingRoomServer {
-	//Shared state
-	static int inside = 0; 
-	static int outside = 0;
-
-	//Other Variables
-	int changingInside = 0;
-	int currentlyWaiting = 0;
-	int serverNumber = 0;
-	
-	//THESE PROLLY NEED TO BE CHANGED. -AE
-	//static final int MAX_INSIDE = 1;
-	//static final int MAX_OUTSIDE = 2; 
-	
-	public static void main(String[] args) throws IOException {
-		//port
-		//int port = getPortFromArgs(args[0]);
-		//int numberOfFittingRooms = Integer.parseInt(args[1]);
-
-		//HARD CODE FOR NOW, BUT CHANGE THIS WHEN SUBMITTING.
-		int port = 50001;
-		String ipAddress = "127.0.0.1"; //"192.168.10.1";
-        startServer(port,ipAddress);
-	}
-	
-	//Starts the server given this port number.
-	private static void startServer(int port, String ipAddress) throws IOException {
-		//Connection acts like a client to the central server. This will get a connection from the fitting room to the central server.
-		Socket s = new Socket(ipAddress,port);
-		System.out.println("Fitting Room server is currently listening for another server...");
-		System.out.println("Fitting Room: Connected to the Central Server!");
-		/*
-		I connect to the central server acts like a client.
-
-		ID, fitting time, wait time
-		32, 400, 300
-		possibly trim waiting time
-		This information is being sent from the central server.
-
-		store values in a list or dictionary or any data structure that keeps track of string from data.
-
-		 */
-		
-		
-		while(true) {
-			//accept client
 			String getDataFromCentral = "";
 			try {
 				BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
 				PrintWriter pw = new PrintWriter(s.getOutputStream(), true);
-				
 				//Sends a message from the central server that a client has connected.
 				//System.out.println(br.readLine()); //RETURNS: "REQUEST_ROOM"
 
@@ -87,26 +39,36 @@ public class FittingRoomServer {
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
-			
-		}
+			 
 	}
+
+	/*
+	 */
 	//Handling the client.
-	private static void handleClient(Socket socket) {
+	private void handleClient(Socket socket) {
 		try {
 			//1. Try to enter room
 			enterRoom(socket);
-
 			//2. Simluate fitting room usage 
-			//3.Exit Room 
+			//Completed
+
+			//3. Exit Room 
+			
+
 			//4. close connection
+			s.close();
+		}catch(SocketException e1) {
+			System.out.println("A client has disconnected.");
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	//Allows one thread in the method with synchroinized
-	private static synchronized boolean enterRoom(Socket socket) throws Exception {
-		System.out.println("The client has entered the room!");
+	private synchronized boolean enterRoom(Socket socket) throws Exception {
+		System.out.println("The client has entered the room!" + ipAddress);
+		simulateUsage();
+
 		//CASE 1: FULL = REJECT
 
 		//if(roomFull)
@@ -130,26 +92,85 @@ public class FittingRoomServer {
 	}
 	
 	//private static void simulateUsage() throws InterruptedException{
-	private static void simulateUsage(Thread t) throws InterruptedException{
+	private void simulateUsage() throws InterruptedException{
 		//Thread goes to sleep
-		int simulationTime = 0;
-		t.sleep(simulationTime);
+		Thread.sleep(fittingTime);
+		System.out.println("A client has exited the fitting room.");
 	}
 	
-	private static void rejectClient(Socket socket) throws IOException{
+	private void rejectClient(Socket socket) throws IOException{
 		//send "ROOM FULL" 
 		//close socket 
 	}
 	
-	private static void allowClient(Socket socket) throws IOException{
+	private void allowClient(Socket socket) throws IOException{
 		//send success message
 	}
 	
-	private static int getPortFromArgs(String args) {
+	private int getPortFromArgs(String args) {
 		//parse port
 		int port = Integer.parseInt(args);
 		return port; 
 	}
+}
 
+public class FittingRoomServer {
+	//Shared state
+	static int inside = 0; 
+	static int outside = 0;
+
+	//Other Variables
+	int changingInside = 0;
+	int currentlyWaiting = 0;
+	int serverNumber = 0;
+
+	Socket socket;
+	
+	//THESE PROLLY NEED TO BE CHANGED. -AE
+	//static final int MAX_INSIDE = 1;
+	//static final int MAX_OUTSIDE = 2; 
+	
+	public static void main(String[] args) throws IOException {
+		//port
+		//int port = getPortFromArgs(args[0]);
+		//int numberOfFittingRooms = Integer.parseInt(args[1]);
+
+		//HARD CODE FOR NOW, BUT CHANGE THIS WHEN SUBMITTING.
+		int port = 50001;
+		String ipAddress = "127.0.0.1"; //"192.168.10.1";
+        startServer(port,ipAddress);
+	}
+
+	public FittingRoomServer(Socket socket) {
+		this.socket = socket;
+	}
+
+
+	//Starts the server given this port number.
+	private static void startServer(int port, String ipAddress) throws IOException {
+		//Connection acts like a client to the central server. This will get a connection from the fitting room to the central server.
+		Socket s = new Socket(ipAddress,port);
+		System.out.println("Fitting Room server is currently listening for another server...");
+		System.out.println("Fitting Room: Connected to the Central Server!");
+		/*
+		I connect to the central server acts like a client.
+
+		ID, fitting time, wait time
+		32, 400, 300
+		possibly trim waiting time
+		This information is being sent from the central server.
+
+		store values in a list or dictionary or any data structure that keeps track of string from data.
+
+		 */
+		
+
+		while(true) {
+			//Socket clientSocket = serverSocket.accept();
+			ClientHandler fitServer = new ClientHandler(s);
+			Thread thread = new Thread(fitServer);
+			thread.start();
+		}
+	}
     
 }
