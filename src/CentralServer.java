@@ -1,11 +1,11 @@
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CentralServer {
 
@@ -46,32 +46,49 @@ public class CentralServer {
 	
 		try{
 		//serversocket for fittingroom (FittingRoom connects to CentralServer)
-			ServerSocket fitroomSocket = new ServerSocket(50001); 
-			System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
+			// ServerSocket fitroomSocket = new ServerSocket(50001); 
+			// System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
 			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
 
-
 			while(true) {
-			//accept fittingroom 
-			Socket fittingRooom	= fitroomSocket.accept(); 
-			System.out.println("CENTRAL: Fitting Room Connected!"); 
+			//accept fittingroom
+				// Socket fittingRooom	= fitroomSocket.accept(); 
+				// System.out.println("CENTRAL: Fitting Room Connected!"); 
 
-			BufferedReader fitIn = new BufferedReader(new InputStreamReader(fittingRooom.getInputStream()));
-			PrintWriter fitOut = new PrintWriter(fittingRooom.getOutputStream(), true);
 				
 			//accept client
+			System.out.println("CENTRAL: About to accept client connection..."); 
 			Socket clientSocket = server.accept(); 
 			System.out.println("CENTRAL: Client connected!"); 
 
-			BufferedReader clientIn = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-			PrintWriter clientOut = new PrintWriter(clientSocket.getOutputStream(), true); 
 
 			//I am unsure if we actually need this section.
 			//was trying to be able to send messages across
 			//and it didn't work. - AE 
+
+			//Threaded Clients NOT TESTED YET
+			ClientHandler client; 
+			 try {
+				//NEED TO ADD FITTING ROOM SOCKET TO THE CLIENT HANDLER
+				//I removed it to test just the client connection and it worked. -AE
+              	client = new ClientHandler(clientSocket);
+                    
+           		Thread t = new Thread(client);
+				
+            	String message = "Thread " + t.getName() + " has been assigned to this client";
+				
+				System.out.println(message);
+				t.start(); 
+				
+			 } catch (Exception e) {
+        	      server.close();
+                  e.printStackTrace();
+			}
+
+			/*
 			String request; 
 			while(!(request = clientIn.readLine()).equalsIgnoreCase("EXIT")){
 				System.out.println("Client says: " + request); 
@@ -85,7 +102,9 @@ public class CentralServer {
 
 				//send back to client
 				clientOut.println(response); 
+				
 			}
+			*/
 			//handle each client in a new thread
 			
 			//handle each FittingRoom in a new thread
@@ -96,6 +115,68 @@ public class CentralServer {
 		}catch(IOException e){
 			e.printStackTrace();
 		}
+	}
+
+	//This is the Client handler class where all the clients will run the thread NOT TESTED YET
+	public static class ClientHandler implements Runnable{
+		Socket client;
+		//Socket fit;
+
+		public ClientHandler(Socket client){
+			this.client = client;
+			//this.fit = fit;
+		}
+
+        @Override
+        public void run() {
+			System.out.println("running...");
+            try{
+                InputStream in = client.getInputStream();
+                OutputStream out = client.getOutputStream();
+
+                BufferedReader clientIn = new BufferedReader(new InputStreamReader(in));
+                PrintWriter clientOut = new PrintWriter(out,true);
+                
+				// BufferedReader fitIn = new BufferedReader(new InputStreamReader(fit.getInputStream()));
+				// PrintWriter fitOut = new PrintWriter(fit.getOutputStream(),true); 
+
+                String request;
+				while((request = clientIn.readLine())!=null){
+					//Client should request a fitting room which connects them to a fitting server, wait for a bit, then exit
+
+					System.out.println("Client says: " + request); 
+
+					//SIMPLE RESPONSE TEST
+					if(request.equals("Request Room")){
+						clientOut.println("Room Allocated");
+					}else if(request.equals("Release Room")){
+						clientOut.println("Room Released");
+					}else if(request.equalsIgnoreCase("Exit")){
+						break; 
+					}else{
+						clientOut.println("Invalid Request");
+					}
+
+					// //send to fittingroom 
+					//fitOut.println("Request Room"); 
+
+					// //get response
+					//String response = fitIn.readLine(); 
+					//System.out.println("Fitting room says: " + response); 
+
+					// //send back to client
+					//clientOut.println(response); 
+				}
+				client.close(); 
+
+			}
+			catch(Exception e){
+				System.out.println("Client disconnected.");
+				e.printStackTrace();
+			}
+        }
+
+
 	}
 	
 	// public static void handleClient(Socket socket) {
