@@ -5,6 +5,7 @@ public class Client{
     private Socket socket;
     private BufferedReader br;//input
     private PrintWriter pw;//output
+    private boolean hasRoom = false; //whether the client has a fitting room or not -AE
 
     public Client(String serverIP, int port){
         try{
@@ -40,13 +41,14 @@ public class Client{
     private void responseHandler(String response){
         System.out.println("Server: " + response);
 
-        if (response.equals("Room Allocated")) {
+        if (response.startsWith("Room Allocated")) {
+            hasRoom = true;
             System.out.println("Entering fitting room...");
             simulateFittingRoomUse();
             //What happens if the client is given a fitting room
 
-        } else if (response.equals("Wait")) {
-            System.out.println("Waiting for available fitting room...");
+        } else if (response.startsWith("ROOMS FULL")) {
+            System.out.println("ROOMS FULL. Waiting for available fitting room...");
             //What happens if a client is in the waiting room because all fitting rooms are full
 
         } else if (response.equals("Room Available")) {
@@ -72,8 +74,11 @@ public class Client{
 
     //When client is done with fitting room
     public void releaseFittingRoom(){
-        pw.println("Release Room");
-        System.out.println("Released Fitting Room");
+        if(hasRoom){
+            pw.println("Release Room");
+            hasRoom = false;
+            System.out.println("Released Fitting Room");
+        }
     }
 
     //When client no longer wants to contact central server
@@ -88,7 +93,7 @@ public class Client{
 
     private void simulateFittingRoomUse(){
     	try {
-    		int sleepTime = (int)(Math.random() * 1000);
+    		int sleepTime = (int)(Math.random() * 5000);
     		Thread.sleep(sleepTime);
 
     		releaseFittingRoom();

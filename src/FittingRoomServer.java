@@ -40,6 +40,7 @@ public class FittingRoomServer {
 
 		Socket central = new Socket("localhost", 50001); 
 		System.out.println("Fitting Room Server connected to Central Server on port 50001...");
+		
 		//ServerSocket
         ServerSocket server = new ServerSocket(port);
 		
