@@ -1,66 +1,71 @@
-import java.io.IOException;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.Semaphore;
+
 
 public class FittingRoomServer {
-	//Shared state
-	static int inside = 0; 
-	static int outside = 0;
-	
-	//THESE PROLLY NEED TO BE CHANGED. -AE
-	//static final int MAX_INSIDE = 1;
-	//static final int MAX_OUTSIDE = 2; 
-	
+	static Semaphore rooms;
+	static int waitMax;
+	static Queue<Integer> waitingQueue = new LinkedList<>();
+
+
 	public static void main(String[] args) {
-		//port
-		//startServer
-	}
-	
-	private static void startServer(int port) {
-		//ServerSocket
-		
-		while(true) {
-			//accept client 
-		}
-	}
-	
-	private static void handleClient(Socket socket) {
+		if (args.length < 1) {
+            System.out.println("Usage: java FittingRoomServer <totalRooms>");
+            return;
+        }
+
+		int totalRooms = Integer.parseInt(args[0]);
+		rooms = new Semaphore(totalRooms);
+		waitMax = totalRooms*2;
+
 		try {
-			//1. Try to enter room
-			//2. Simluate fitting room usage 
-			//3.Exit Room 
-			//4. close connection
-		}catch(Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static synchronized boolean enterRoom(Socket socket) throws Exception {
-		//CASE 1: FULL = REJECT
+    		Socket central = new Socket("127.0.0.1", 5000);
+    		BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
+    		PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
 
-		//CASE 2: Room occupied = wait 
-		
-		//CASE 3: Enter Room 
-		
-		return false; 
-	}
-	
-	private static void simulateUsage() throws InterruptedException{
-		//Thread goes to sleep 
-	}
-	
-	private static void rejectClient(Socket socket) throws IOException{
-		//send "ROOM FULL" 
-		//close socket 
-	}
-	
-	private static void allowClient(Socket socket) throws IOException{
-		//send success message
-	}
-	
-	private static int getPortFromArgs(String[] args) {
-		//parse port
-		return -1; 
-	}
+			while(true){
+				String message = br.readLine();
 
-    
+				if (message == null) {
+                    System.out.println("Central server disconnected");
+                    break;
+                }
+
+				String[] parts = message.split(" ");
+
+				synchronized(FittingRoomServer.class){
+
+
+					if(parts[0].equals("ALLOCATE")){
+						int clientID = Integer.parseInt(parts[1]);
+
+						if(rooms.tryAcquire()){
+							pw.println("Allocated to " + clientID);
+						}else if(waitingQueue.size() < waitMax){
+							waitingQueue.add(clientID);
+							pw.println("Wait " + clientID);
+						}else{
+							pw.println("Full " + clientID);
+						}
+					}else if(parts[0].equals("RELEASE")){
+						rooms.release();
+
+						if(!waitingQueue.isEmpty()){
+							int nextClient = waitingQueue.poll();
+							rooms.tryAcquire();
+							pw.println("Next " + nextClient);
+						}
+					}
+				}
+			}
+
+		} catch (IOException e) {
+    		System.out.println("Failed to connect to Central Server");
+    		e.printStackTrace();
+    		return; 
+		}		
+
+	}
 }
