@@ -6,10 +6,16 @@ public class Client{
     private BufferedReader br;//input
     private PrintWriter pw;//output
 
-    public Client(String serverIP, int port){
+    private int clientID;
+    private String serverIP;
+
+    public Client(String serverIP, int port, int clientID){
+        this.serverIP = serverIP;
+        this.clientID = clientID;
+
         try{
             socket = new Socket(serverIP,port);
-            System.out.println("Connected to Server");
+            display("connected to server");
             br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             pw = new PrintWriter(socket.getOutputStream(),true);
 
@@ -29,44 +35,48 @@ public class Client{
                 }
 
             }catch(IOException e){
-                System.out.println("Disconnected from Server");
+                display("disconnected from server");
             }
         }
     }
 
+    private void display(String message){
+        System.out.println("Customer #" + clientID + " " + message + " <Server: " + serverIP + ">");
+    }
+
     private void responseHandler(String response){
-        System.out.println("Server: " + response);
 
         if (response.equals("Room Allocated")) {
-            System.out.println("Entering fitting room...");
+
+            display("leaves waiting area and enters fitting room");
             simulateFittingRoomUse();
-            //What happens if the client is given a fitting room
 
         } else if (response.equals("Wait")) {
-            System.out.println("Waiting for available fitting room...");
-            //What happens if a client is in the waiting room because all fitting rooms are full
+
+            display("enters the waiting area and takes a seat");
 
         } else if (response.equals("Room Available")) {
-            System.out.println("Room now available, requesting again...");
+
+            display("notified that a fitting room is available");
             requestFittingRoom();
-            //what happens when rooms are available
 
         } else {
-            System.out.println("Come back later");
-            //what happens if waiting room and fitting rooms are all full
+
+            display("leaves the store (no space available)");
+            exit();
         }
-    }
+}   
 
     //When client is trying to get into a fitting room
     public void requestFittingRoom(){
         pw.println("Request Room");
-        System.out.println("Requested fitting room");
+        display("requests a fitting room");
     }
 
     //When client is done with fitting room
     public void releaseFittingRoom(){
         pw.println("Release Room");
-        System.out.println("Released Fitting Room");
+        display("leaves fitting room");    
     }
 
     //When client no longer wants to contact central server
@@ -105,8 +115,8 @@ public class Client{
     		new Thread(new Runnable() {
     			@Override
     			public void run() {
-        			Client client = new Client(serverIP, port);
-        			System.out.println("Customer #" + id + " enters the system");
+        			Client client = new Client(serverIP, port, id);
+        			client.display("enters the system");
         			client.requestFittingRoom();
     			}
 			}).start();
