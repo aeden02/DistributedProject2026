@@ -115,7 +115,7 @@ public class Client{
         int totalCustomers = Integer.parseInt(args[0]);
         
         String serverIP = "127.0.0.1";
-    	int port = 5000;
+    	int port = 50000;
 
     	int clientId = 1;
 
