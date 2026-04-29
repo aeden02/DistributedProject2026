@@ -51,8 +51,8 @@ public class CentralServer {
 	
 		try{
 		//serversocket for fittingroom (FittingRoom connects to CentralServer)
-			// ServerSocket fitroomSocket = new ServerSocket(50001); 
-			// System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
+			ServerSocket fitroomSocket = new ServerSocket(50001); 
+			System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
@@ -74,7 +74,7 @@ public class CentralServer {
 				//NEED TO ADD FITTING ROOM SOCKET TO THE CLIENT HANDLER
 				//I removed it to test just the client connection and it worked. -AE
 
-              	ClientHandler client = new ClientHandler(clientSocket);
+              	ClientHandler client = new ClientHandler(clientSocket,fitroomSocket);
                     
            		Thread t = new Thread(client);
 				
@@ -99,7 +99,8 @@ public class CentralServer {
 		private BufferedReader fitIn; 
 		private PrintWriter fitOut;
 		public Socket client;
-		private Socket fit;
+		private ServerSocket fit;
+		private Socket fitClient;
 		private boolean hasRoom = false; 
 		PrintWriter clientOut;
 		private boolean isActive = true; 
@@ -107,9 +108,9 @@ public class CentralServer {
 		//waiting queue for clients when rooms are full. -AE
 		static Queue<ClientHandler> waitingClients = new LinkedList<>();
 
-		public ClientHandler(Socket client){
+		public ClientHandler(Socket client,ServerSocket fit){
 			this.client = client;
-			//this.fit = fit;
+			this.fit = fit;
 		}
 
 		public void assignRoom(){
@@ -141,10 +142,11 @@ public class CentralServer {
 
 
 				//Connect to fitting room here. Each thread gets its own connection. -AE
-				fit = new Socket("localhost", 50001);
+				//fit = new Socket("localhost", 50001);
+				fitClient = fit.accept();
 
-				fitIn = new BufferedReader(new InputStreamReader(fit.getInputStream()));
-				fitOut = new PrintWriter(fit.getOutputStream(),true);
+				fitIn = new BufferedReader(new InputStreamReader(fitClient.getInputStream()));
+				fitOut = new PrintWriter(fitClient.getOutputStream(),true);
 				
                 String request;
 				while((request = clientIn.readLine())!=null){

@@ -7,7 +7,6 @@ import java.util.concurrent.Semaphore;
 public class FittingRoomServer {
 	static Semaphore rooms;
 	static int waitMax;
-	static Queue<Integer> fittingQueue = new LinkedList<>();
 	static Queue<Integer> waitingQueue = new LinkedList<>();
 
 
@@ -20,22 +19,24 @@ public class FittingRoomServer {
 		int totalRooms = Integer.parseInt(args[0]);
 		rooms = new Semaphore(totalRooms);
 		waitMax = totalRooms*2;
-		//int customerThreads = totalRooms + waitMax;
+
 		
 		
 		try {
-			ServerSocket socketCentral = new ServerSocket(50001);
+			//ServerSocket socketCentral = new ServerSocket(50001);
 			System.out.println("FittingRoomServer is connected to the Central Server!");
-    		//Socket central = new Socket("127.0.0.1", 50001);
+    		Socket central = new Socket("127.0.0.1", 50001);
+			BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
+    		PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
 
 			while(true){
 				//System.out.println("Test");
-				Socket central = socketCentral.accept();
-				BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
-    			PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+				//Socket central = socketCentral.accept();
+				//BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
+    			//PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
 
 				String message = br.readLine();
-				//System.out.println("MESSAGE: " + message);
+				System.out.println("MESSAGE: " + message);
 
 				if (message == null) {
                     System.out.println("Central server disconnected");
