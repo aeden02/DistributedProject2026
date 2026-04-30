@@ -1,106 +1,109 @@
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.Semaphore;
 
-class ClientHandler implements Runnable{
-	private Socket client;
-	public String ipAddress;
-
-	public ClientHandler(Socket client) {
-		this.client = client;
-		this.ipAddress = client.getInetAddress().getHostAddress()+"";
-	}
-
-	public void run(){
-		System.out.println("A client connected to the fitting room server.");
-	}
-}
 
 public class FittingRoomServer {
-	//Shared state
-	static int inside = 0; 
-	static int outside = 0;
-	ClientHandler client;
-	
-	//THESE PROLLY NEED TO BE CHANGED. -AE
-	//static final int MAX_INSIDE = 1;
-	//static final int MAX_OUTSIDE = 2; 
-	
-	public static void main(String[] args) throws IOException {
-		//port
+	static Semaphore rooms;
+	static int waitMax;
+	static Queue<Integer> waitingQueue = new LinkedList<>();
 
-		//int port = getPortFromArgs(args[0]);
-		int port = 50002;
-        startServer(port);
-	}
-	
-	//Starts the server given this port number.
-	private static void startServer(int port) throws IOException {
-		ClientHandler client;
 
-		Socket central = new Socket("localhost", 50001); 
-		System.out.println("Fitting Room Server connected to Central Server on port 50001...");
+	public static void main(String[] args) throws IOException{
+		if (args.length < 1) {
+            System.out.println("Usage: java FittingRoomServer <totalRooms>");
+            return;
+        }
+
+		int totalRooms = Integer.parseInt(args[0]);
+		rooms = new Semaphore(totalRooms);
+		waitMax = totalRooms*2;
+
+		System.out.println("Fitting Room Server starting with " + totalRooms + " rooms and max waiting queue of " + waitMax);
 		
-		//ServerSocket
-        ServerSocket server = new ServerSocket(port);
 		
-		System.out.println("Fitting Room Server is now starting!");
-		while(true) {
-			//accept client
-			try {
-				
-				Socket clientSocket = server.accept();
-				ClientHandler clientObject = new ClientHandler(clientSocket);
-				Thread t = new Thread(clientObject);
-				t.start();
-
-			}catch(Exception e) {
-				e.printStackTrace();
-			}
-			
-		}
-	}
-	//Handling the client.
-	private static void handleClient(Socket socket) {
 		try {
-			//1. Try to enter room
-			//2. Simluate fitting room usage 
-			//3.Exit Room 
-			//4. close connection
-		}catch(Exception e) {
-			e.printStackTrace();
+			//ServerSocket socketCentral = new ServerSocket(50001);
+			System.out.println("FittingRoomServer is connected to the Central Server!");
+    		Socket central = new Socket("127.0.0.1", 50001);
+			BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
+    		PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+
+			while(true){
+				//System.out.println("Test");
+				//Socket central = socketCentral.accept();
+				//BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
+    			//PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+
+				String message = br.readLine();
+				System.out.println("MESSAGE: " + message);
+
+				if (message == null) {
+                    System.out.println("Central server disconnected");
+                    break;
+                }
+
+				String[] parts = message.split(" ");
+				//System.out.println(parts[0]);
+
+				synchronized(FittingRoomServer.class){
+
+
+					if(parts[0].equals("ALLOCATE")){
+						int clientID = Integer.parseInt(parts[1]);
+
+						if(rooms.tryAcquire()){
+							pw.println("Allocated to " + clientID);
+							System.out.println("Allocated to " + clientID);
+
+						}else if(waitingQueue.size() < waitMax){
+							waitingQueue.add(clientID);
+							pw.println("Wait " + clientID);
+							System.out.println("Wait " + clientID);
+
+						}else{
+							pw.println("Full " + clientID);
+							System.out.println("Full " + clientID);
+						}
+
+					}else if(parts[0].equals("RELEASE")){
+						System.out.println("Rooms avaiable BEFORE RELEASE: " + rooms.availablePermits());
+
+						if(rooms.availablePermits() < totalRooms){ // only release if there are clients waiting. 
+							rooms.release();
+						}else{
+							System.out.println("WARNING: Attempted to over-release rooms."); 
+							return; 
+						}
+
+						//AFTER releasing, assing next client if possible
+						if(!waitingQueue.isEmpty()){
+							int nextClient = waitingQueue.poll();
+
+							if(rooms.tryAcquire()){
+								pw.println("Next " + nextClient);
+								System.out.println("Assigned Room to waiting client " + nextClient);
+							}else{
+								//safely fallback in case
+								waitingQueue.add(nextClient);
+
+							}
+						
+						}
+
+						System.out.println("Rooms avaiable AFTER RELEASE: " + rooms.availablePermits());
+
+					}	
+				}
+			}	
+			
+		} catch (IOException e) {
+    		System.out.println("Failed to connect to Central Server");
+    		e.printStackTrace();
+    		return; 
 		}
-	}
-	
-	//Allows one thread in the method with synchroinized
-	private static synchronized boolean enterRoom(Socket socket) throws Exception {
-		//CASE 1: FULL = REJECT
+			
 
-		//CASE 2: Room occupied = wait 
-		
-		//CASE 3: Enter Room 
-		
-		return false; 
 	}
-	
-	private static void simulateUsage() throws InterruptedException{
-		//Thread goes to sleep 
-	}
-	
-	private static void rejectClient(Socket socket) throws IOException{
-		//send "ROOM FULL" 
-		//close socket 
-	}
-	
-	private static void allowClient(Socket socket) throws IOException{
-		//send success message
-	}
-	
-	private static int getPortFromArgs(String args) {
-		//parse port
-		int port = Integer.parseInt(args);
-		return port; 
-	}
-
-    
 }
