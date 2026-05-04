@@ -21,7 +21,7 @@ class FittingThreadHandling implements Runnable{
 				if (message == null) {
                     System.out.println("Central server disconnected");
                     //break;
-					System.exit(0); //Terminate when central server disconnected.
+					System.exit(0); //Terminate when central server disconnected..
                 }
 
 				String[] parts = message.split(" ");
