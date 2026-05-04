@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 
 public class Client{
-    private Socket socket;
+    public Socket socket;
     private BufferedReader br;//input
     private PrintWriter pw;//output
     private boolean hasRoom = false;
@@ -36,13 +36,19 @@ public class Client{
         public void run(){
             try{
                 String response;
-                while((response = br.readLine()) != null){
+                while(socket !=null && !socket.isClosed() && (response = br.readLine()) != null){
                     responseHandler(response);
                     
                 }
 
             }catch(IOException e){
-                display("disconnected from server");
+                if(socket != null && socket.isClosed()){
+                    System.out.println("Client " + clientID + " listener stopped (Socket closed)");
+                }else{
+                    System.out.println("Error in client listener");
+                    e.printStackTrace();
+                }
+               
             }
         }
     }
@@ -54,12 +60,12 @@ public class Client{
     private void responseHandler(String response){
 
         System.out.println("Server: " + response);
-        if (response.equals("Room Allocated")) {
+        if (response.startsWith("Room Allocated")) {
             hasRoom = true;
             display("leaves waiting area and enters fitting room");
             simulateFittingRoomUse();
 
-        } else if (response.equals("Wait")) {
+        } else if (response.startsWith("Wait")) {
 
             display("enters the waiting area and takes a seat");
 
@@ -68,10 +74,12 @@ public class Client{
             display("notified that a fitting room is available");
             requestFittingRoom();
 
-        } else {
-
+        } else if(response.equals("Full")) {
             display("leaves the store (no space available)");
             exit();
+         }else{
+
+          System.out.println("Unknown response :" + response);
         }
 }   
 
@@ -81,17 +89,17 @@ public class Client{
             System.out.println("Client: Not Connected - Cannot Send.");
             return;
         }
-        pw.println("Request Room");
+        pw.println("Request Room " + clientID); 
         display("requests a fitting room");
     }
 
     //When client is done with fitting room
     public void releaseFittingRoom(){
         if(hasRoom) {
-            pw.println("Release Room");
+            pw.println("Release Room " + clientID);
             hasRoom = false;
             System.out.println("Released Fitting Room.");
-            //display("leaves fitting room");
+            display("leaves fitting room");
         }    
     }
 
@@ -109,10 +117,16 @@ public class Client{
 
     private void simulateFittingRoomUse(){
     	try {
-    		int sleepTime = (int)(Math.random() * 1000);
+    		int sleepTime = (int)(Math.random() * 5000);
     		Thread.sleep(sleepTime);
 
     		releaseFittingRoom();
+
+            //adding a tiny delay to prevent msg getting lost before disconnect. 
+            try{
+                Thread.sleep(50);
+            }catch(InterruptedException e){  }
+            
     		exit();
 
 		} catch (InterruptedException e) {
@@ -132,7 +146,7 @@ public class Client{
         int totalCustomers = fittingRooms + chairs;
         
         String serverIP = "127.0.0.1";
-    	int port = 50001;
+    	int port = 50000;
 
     	int clientId = 1;
 
@@ -151,17 +165,26 @@ public class Client{
         			Client client = new Client(serverIP, port, id);
         			client.display("enters the system");
         			client.requestFittingRoom();
-    			}
-			}).start();
+
+                    //KEEP CLIENT ALIVE UNTIL IT EXITS ON ITS OWN. 
+                    //OTHERWISE, MAIN THREAD WILL EXIT AND CLOSE CONNECTION. 
+                    try{
+                        while(client.socket != null && !client.socket.isClosed()){
+                            Thread.sleep(100);
+                        }
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+			}}).start();
 
         	try {
             	Thread.sleep((int)(Math.random() * 1000));//this is the delay for the random entrance time
         	} catch (InterruptedException e) {
             	e.printStackTrace();
         	}
+
+        }
+        
     	}
 
 	}
-
-   
-}
