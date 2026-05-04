@@ -25,7 +25,7 @@ class FittingThreadHandling implements Runnable{
                 }
 
 				String[] parts = message.split(" ");
-				//System.out.println(parts[0]);
+				
 
 				synchronized(FittingRoomServer.class){
 
