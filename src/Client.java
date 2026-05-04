@@ -6,6 +6,7 @@ public class Client{
     private BufferedReader br;//input
     private PrintWriter pw;//output
 
+    //test
     private int clientID;
     private String serverIP;
 
