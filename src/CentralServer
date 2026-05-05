@@ -1,46 +1,187 @@
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class CentralServer {
 
-	static class RoomInfo{
-	//Room data structure
-	}
-	
-	//List of rooms
-	
-	
-	public static void main(String[] args) {
-		//1. Initialize rooms
-		//2. Start server socket
-	}
-	
-	private static void initializeRooms() {
-		//Add rooms(host, port, capacity)
-	}
-	
-	private static void startServer() {
-		//ServerSocket
-		
-		while(true) {
-			//accept client
-			//create new thread 
-		}
-	}
-	
-	public static void handleClient(Socket socket) {
-		//1. find available rooms
-		//2. send response
-		//3. close connection
-	}
-	
-	private static synchronized RoomInfo getAvaliableRoom() {
-		//loop through rooms 
-		//if cap > 0 then reserve slot and return 
-		return null; 
-	}
-	
-	private static void sendRoomAssignment(Socket socket, RoomInfo room) {
-		//write "host:port" 
-	}
-	
+    static Socket fittingRoom;
+    static PrintWriter fitOut;
+    static BufferedReader fitIn;
+
+    // Map of clientID → handler
+    private static Map<Integer, ClientHandler> clientIDs = new HashMap<>();
+
+    public static void main(String[] args) {
+        System.out.println("CentralServer starting...");
+        startServerSockets();
+    }
+
+    private static void startServerSockets() {
+        try {
+            ServerSocket fitroomSocket = new ServerSocket(50001);
+            System.out.println("CENTRAL: Waiting for Fitting Room...");
+
+            ServerSocket server = new ServerSocket(50000);
+            System.out.println("CENTRAL: Waiting for Clients...");
+
+            // Accept fitting room ONCE
+            fittingRoom = fitroomSocket.accept();
+            System.out.println("CENTRAL: Fitting Room Connected!");
+
+            fitOut = new PrintWriter(fittingRoom.getOutputStream(), true);
+            fitIn = new BufferedReader(new InputStreamReader(fittingRoom.getInputStream()));
+
+            while (true) {
+                Socket clientSocket = server.accept();
+                ClientHandler client = new ClientHandler(clientSocket);
+
+                Thread t = new Thread(client);
+                t.start();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 🔒 Thread-safe communication with fitting room
+    public static synchronized String sendToFittingRoom(String msg) throws IOException {
+        fitOut.println(msg);
+        return fitIn.readLine();
+    }
+
+    public static class ClientHandler implements Runnable {
+        private Socket client;
+        private PrintWriter clientOut;
+
+        private volatile boolean hasRoom = false;
+        private volatile boolean isWaiting = false;
+        private volatile boolean isActive = true;
+
+        public int clientID = -1;
+
+        public ClientHandler(Socket client) {
+            this.client = client;
+        }
+
+        @Override
+        public void run() {
+            try {
+                BufferedReader clientIn = new BufferedReader(
+                        new InputStreamReader(client.getInputStream()));
+                clientOut = new PrintWriter(client.getOutputStream(), true);
+
+                String request;
+
+                while ((request = clientIn.readLine()) != null) {
+
+                    System.out.println("Client says: " + request);
+
+                    // REQUEST ROOM
+                    if (request.startsWith("Request Room")) {
+                        String[] parts = request.split(" ");
+
+                        try {
+                            clientID = Integer.parseInt(parts[2]);
+                            CentralServer.clientIDs.put(clientID, this);
+                        } catch (Exception e) {
+                            clientOut.println("Invalid client ID");
+                            continue;
+                        }
+
+                        if (!hasRoom) {
+
+                            System.out.println("Forwarding to fitting room...");
+
+                            String response =
+                                    CentralServer.sendToFittingRoom("ALLOCATE " + clientID);
+
+                            if (response == null) {
+                                clientOut.println("ERROR: No response");
+                                continue;
+                            }
+
+                            System.out.println("FROM FITTING ROOM: " + response);
+
+                            if (response.startsWith("Allocated")) {
+                                hasRoom = true;
+                                isWaiting = false;
+                                clientOut.println("Room Allocated " + clientID);
+
+                            } else if (response.startsWith("Wait")) {
+                                isWaiting = true;
+                                clientOut.println("Wait");
+
+                            } else if (response.startsWith("Full")) {
+                                clientOut.println("Full");
+
+                            } else if (response.startsWith("Next")) {
+                                int nextID = Integer.parseInt(response.split(" ")[1]);
+
+                                ClientHandler nextClient = CentralServer.clientIDs.get(nextID);
+
+                                if (nextClient != null && nextClient.clientOut != null) {
+                                    nextClient.clientOut.println("Room Allocated " + nextID);
+                                    nextClient.hasRoom = true;
+                                }
+
+                            } else {
+                                clientOut.println("ERROR: Invalid response");
+                            }
+
+                        } else {
+                            clientOut.println("Already have a room");
+                        }
+
+                    }
+                    // RELEASE ROOM
+                    else if (request.startsWith("Release Room")) {
+
+                        synchronized (CentralServer.class) {
+                            if (hasRoom) {
+                                hasRoom = false;
+
+                                CentralServer.sendToFittingRoom("RELEASE " + clientID);
+
+                                clientOut.println("Room Released");
+                            } else {
+                                clientOut.println("No room to release");
+                            }
+                        }
+
+                    }
+                    // EXIT
+                    else if (request.equalsIgnoreCase("Exit")) {
+                        break;
+                    }
+                    else {
+                        clientOut.println("Invalid Request");
+                    }
+                }
+
+            } catch (Exception e) {
+                System.out.println("Client disconnected.");
+            } finally {
+                cleanup();
+            }
+        }
+
+        private void cleanup() {
+            try {
+                isActive = false;
+
+                CentralServer.clientIDs.remove(clientID);
+
+                if (hasRoom) {
+                    CentralServer.sendToFittingRoom("RELEASE " + clientID);
+                }
+
+                if (client != null && !client.isClosed())
+                    client.close();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
