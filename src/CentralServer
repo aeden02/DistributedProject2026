@@ -44,7 +44,7 @@ public class CentralServer {
         }
     }
 
-    // 🔒 Thread-safe communication with fitting room
+    
     public static synchronized String sendToFittingRoom(String msg) throws IOException {
         fitOut.println(msg);
         return fitIn.readLine();
