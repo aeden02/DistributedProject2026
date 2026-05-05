@@ -54,17 +54,17 @@ public class FittingRoomServer {
 						int clientID = Integer.parseInt(parts[1]);
 
 						if(rooms.tryAcquire()){
-							pw.println("Allocated to " + clientID);
-							System.out.println("Allocated to " + clientID);
+							pw.println("Allocated to id " + clientID);
+							System.out.println("Allocated to id " + clientID);
 
 						}else if(waitingQueue.size() < waitMax){
 							waitingQueue.add(clientID);
 							pw.println("Wait " + clientID);
-							System.out.println("Wait " + clientID);
+							System.out.println("Wait id " + clientID);
 
 						}else{
 							pw.println("Full " + clientID);
-							System.out.println("Full " + clientID);
+							System.out.println("Full id " + clientID);
 						}
 
 					}else if(parts[0].equals("RELEASE")){
