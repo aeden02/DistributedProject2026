@@ -8,25 +8,31 @@ public class FittingRoomServer {
     static Semaphore rooms;
     static int waitMax;
     static Queue<Integer> waitingQueue = new LinkedList<>();
+    static int totalRooms;
 
     public static void main(String[] args) throws IOException {
 
-        int totalRooms = Integer.parseInt(args[0]);
+        int totalRoomsArg = Integer.parseInt(args[0]);
+        totalRooms = totalRoomsArg;
 
-        rooms = new Semaphore(totalRooms);
-        waitMax = totalRooms * 2;
+        rooms = new Semaphore(totalRoomsArg);
+        waitMax = totalRoomsArg * 2;
 
-        System.out.println("Fitting Room Server started");
+        System.out.println("Fitting Room Server started...");
 
         Socket central = new Socket("127.0.0.1", 50001);
 
-        BufferedReader br = new BufferedReader(
-                new InputStreamReader(central.getInputStream()));
-        PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+        BufferedReader br =
+                new BufferedReader(new InputStreamReader(central.getInputStream()));
+
+        PrintWriter pw =
+                new PrintWriter(central.getOutputStream(), true);
 
         while (true) {
 
             String message = br.readLine();
+            System.out.println("MESSAGE: " + message);
+
             if (message == null) break;
 
             String[] parts = message.split(" ");
@@ -38,30 +44,42 @@ public class FittingRoomServer {
                     int clientID = Integer.parseInt(parts[1]);
 
                     if (rooms.tryAcquire()) {
+
                         pw.println("Allocated " + clientID);
+                        System.out.println("Allocated " + clientID);
 
-                    } else if (waitingQueue.size() < waitMax) {
+                    }else if (waitingQueue.size() < waitMax) {
+
                         waitingQueue.add(clientID);
-                        pw.println("Wait " + clientID);
 
-                    } else {
+                        pw.println("Wait " + clientID);
+                        System.out.println("Wait " + clientID);
+
+                    }else {
+
                         pw.println("Full " + clientID);
+                        System.out.println("Full " + clientID);
                     }
 
-                }
-                else if (parts[0].equals("RELEASE")) {
+                }else if (parts[0].equals("RELEASE")) {
+
+                    System.out.println("Before release: " + rooms.availablePermits());
 
                     if (rooms.availablePermits() < totalRooms) {
                         rooms.release();
                     }
 
+                    System.out.println("After release: " + rooms.availablePermits());
+
                     if (!waitingQueue.isEmpty()) {
-                        int next = waitingQueue.poll();
 
                         if (rooms.tryAcquire()) {
-                            pw.println("Next " + next);
-                        } else {
-                            waitingQueue.add(next);
+
+                            int nextClient = waitingQueue.poll();
+
+                            pw.println("Allocated " + nextClient);
+
+                            System.out.println("Promoted from queue: " + nextClient);
                         }
                     }
                 }
