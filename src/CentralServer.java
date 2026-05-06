@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class CentralServer{
-	static int nextRoom = 0; 
+	
 	static Socket fittingRoom; //socket for fitting room connection.
 	static PrintWriter fitOut;
 	static BufferedReader fitIn;
@@ -168,6 +168,33 @@ public class CentralServer{
 			clientOut.println("Room Allocated"); 
 		}
 
+		public void requestNewRoom(){
+			try{
+				for(FittingRoomHandler room : CentralServer.fittingRooms){
+					if(room.active){
+						String response = room.sendRequest("ALLOCATE " + clientID);
+
+						if(response.startsWith("Allocated")){
+							assignedRoom = room; 
+
+							hasRoom = true;
+
+							clientOut.println("Room Reassigned"); 
+
+							room.assignedClients.add(this); 
+
+							return; 
+						}
+					}
+				}
+
+				clientOut.println("No fitting rooms available"); 
+			}catch(Exception e){
+				e.printStackTrace(); 
+			}
+			
+		}
+
         @Override
         public void run() {
 			
@@ -202,19 +229,38 @@ public class CentralServer{
 							
 							//send requestto fittingroom 
 							System.out.println("FORWARDING REQUEST TO FITTING ROOM: " + request);
+							String response = null; 
 
-							
-							FittingRoomHandler room = CentralServer.fittingRooms.get(nextRoom); 
-							nextRoom = (nextRoom + 1) % CentralServer.fittingRooms.size(); 
-							assignedRoom = room;  //just using first room to test
+							//** START OF LOGIC FOR THE ROUND ROBIN OF FITTING ROOMS
 							
 
-							//assignedRoom.fitOut.println("ALLOCATE " + clientID);
-							//fitOut.flush();
+							for(int i = 0; i < CentralServer.fittingRooms.size(); i++){
 
-							//read response
-							String response = assignedRoom.sendRequest("ALLOCATE " + clientID); 
+								int index = (clientID + i) % CentralServer.fittingRooms.size(); 
+								System.out.println("Trying fitting room index: " + index); 
+
+								FittingRoomHandler room = CentralServer.fittingRooms.get(index); 
+
+								try{
+								response = room.sendRequest("ALLOCATE " + clientID); 
+								}catch(IOException e){
+									System.out.println("Skipping dead fitting room.");
+
+									continue; 
+								}
+								if(!response.startsWith("Full")){
+
+									assignedRoom = room; 
+
+									 
+
+									break; 
+								}
+							}
+
 							
+							//END OF LOGIC FOR FITTING ROOM SERVERS
+	
 
 							System.out.println("CENTRAL GOT FROM FITTING ROOM: " + response);
 
@@ -227,6 +273,7 @@ public class CentralServer{
 
 									isWaiting = false; //no longer waiting for room. 
 									hasRoom = true; //mark client as having a room.
+									assignedRoom.assignedClients.add(this); 
 									clientOut.println("Room Allocated " + clientID); //send response to client
 									System.out.println("Client "+ clientID + " is in the fitting room.");
 									hasRoom = true; 
@@ -284,7 +331,7 @@ public class CentralServer{
 								hasRoom = false; //SET FIRST BEFORE RELEASING TO PREVENT MULTIPLE RELEASES.
 
 								String response = assignedRoom.sendRequest("RELEASE " + clientID);  
-
+								assignedRoom.assignedClients.remove(this); 
 								System.out.println("CENTRAL GOT FROM FITTING ROOM: " + response); 
 
 								if(response != null && response.startsWith("Allocated") ){
@@ -374,6 +421,8 @@ public class CentralServer{
 		Socket fitting;
 		BufferedReader fitIn; 
 		PrintWriter fitOut; 
+		boolean active = true; 
+		ArrayList<ClientHandler> assignedClients = new ArrayList<>(); 
 
 		public FittingRoomHandler(Socket fitting){
 			this.fitting = fitting;
@@ -385,19 +434,50 @@ public class CentralServer{
 				System.out.println("IO EXCEPTION FROM FITIN AND FITOUT"); 
 			}
 			
+			
 		}
 
         @Override
         public void run() {
-			System.out.println("test");
-
-
+			
+			System.out.println("Fitting room handler thread started."); 
         }
+		public void recoverClients(){
+			for(ClientHandler client : assignedClients){
+				try{
+					client.hasRoom = false; 
 
+					client.clientOut.println("Fitting Room Server Down");
+
+					client.requestNewRoom(); 
+				}catch(Exception e){
+					e.printStackTrace(); 
+				}
+			}
+		}
 		public synchronized String sendRequest(String msg) throws IOException{
-			fitOut.println(msg); 
+			try{
+				fitOut.println(msg); 
 
-			return fitIn.readLine(); 
+				String response = fitIn.readLine(); 
+
+				if(response == null){
+					throw new IOException("Fitting Room disconnected"); 
+				}
+
+				return response; 
+			}catch(IOException e){
+				active = false; 
+
+				System.out.println("FITTING ROOM SERVER DISCONNECTED"); 
+
+				CentralServer.fittingRooms.remove(this); 
+
+				recoverClients(); 
+
+				throw e; 
+			}
+			
 		}
 
 	}

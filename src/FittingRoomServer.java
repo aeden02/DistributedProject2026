@@ -82,6 +82,7 @@ public class FittingRoomServer {
                             System.out.println("Promoted from queue: " + nextClient);
                         }
                     }else{
+						pw.println("Released."); 
 						System.out.println("WAITING QUEUE IS EMPTY"); 
 					}
                 }
