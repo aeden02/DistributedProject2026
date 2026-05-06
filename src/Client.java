@@ -124,10 +124,11 @@ public class Client{
 
             //adding a tiny delay to prevent msg getting lost before disconnect. 
             try{
-                Thread.sleep(50);
+                Thread.sleep(100);
             }catch(InterruptedException e){  }
-            
-    		exit();
+    		
+            display("Leaving Fitting Room...");
+            exit(); 
 
 		} catch (InterruptedException e) {
     		e.printStackTrace();
@@ -141,21 +142,15 @@ public class Client{
         return;
     }
 
-        int fittingRooms = Integer.parseInt(args[0]);
-        int chairs = fittingRooms * 2;
-        int totalCustomers = fittingRooms + chairs;
+    
+        int totalCustomers = Integer.parseInt(args[0]);
         
         String serverIP = "127.0.0.1";
     	int port = 50000;
 
     	int clientId = 1;
 
-        System.out.println("Using arguments from command line");
-        System.out.println("Fitting Rooms = " + fittingRooms);
-        System.out.println("Number of chairs in the waiting area = " + chairs);
-        System.out.println("Number of customers = " + totalCustomers);
 
-        //while(true) {
     	while (clientId <= totalCustomers) {
         	int id = clientId++;
 
@@ -188,4 +183,3 @@ public class Client{
     	}
 
 	}
-

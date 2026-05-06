@@ -3,107 +3,89 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 
-
 public class FittingRoomServer {
-	static Semaphore rooms;
-	static int waitMax;
-	static Queue<Integer> waitingQueue = new LinkedList<>();
 
+    static Semaphore rooms;
+    static int waitMax;
+    static Queue<Integer> waitingQueue = new LinkedList<>();
+    static int totalRooms;
 
-	public static void main(String[] args) throws IOException{
-		if (args.length < 1) {
-            System.out.println("Usage: java FittingRoomServer <totalRooms>");
-            return;
-        }
+    public static void main(String[] args) throws IOException {
 
-		int totalRooms = Integer.parseInt(args[0]);
-		rooms = new Semaphore(totalRooms);
-		waitMax = totalRooms*2;
+        int totalRoomsArg = Integer.parseInt(args[0]);
+        totalRooms = totalRoomsArg;
 
-		System.out.println("Fitting Room Server starting with " + totalRooms + " rooms and max waiting queue of " + waitMax);
-		
-		
-		try {
-			//ServerSocket socketCentral = new ServerSocket(50001);
-			System.out.println("FittingRoomServer is connected to the Central Server!");
-    		Socket central = new Socket("127.0.0.1", 50001);
-			BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
-    		PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+        rooms = new Semaphore(totalRoomsArg);
+        waitMax = totalRoomsArg * 2;
 
-			while(true){
-				//System.out.println("Test");
-				//Socket central = socketCentral.accept();
-				//BufferedReader br = new BufferedReader(new InputStreamReader(central.getInputStream()));
-    			//PrintWriter pw = new PrintWriter(central.getOutputStream(), true);
+        System.out.println("Fitting Room Server started...");
 
-				String message = br.readLine();
-				System.out.println("MESSAGE: " + message);
+        Socket central = new Socket("127.0.0.1", 50001);
 
-				if (message == null) {
-                    System.out.println("Central server disconnected");
-                    break;
+        BufferedReader br =
+                new BufferedReader(new InputStreamReader(central.getInputStream()));
+
+        PrintWriter pw =
+                new PrintWriter(central.getOutputStream(), true);
+
+        while (true) {
+
+            String message = br.readLine();
+            System.out.println("MESSAGE: " + message);
+
+            if (message == null) break;
+
+            String[] parts = message.split(" ");
+
+            synchronized (FittingRoomServer.class) {
+
+                if (parts[0].equals("ALLOCATE")) {
+
+                    int clientID = Integer.parseInt(parts[1]);
+
+                    if (rooms.tryAcquire()) {
+
+                        pw.println("Allocated " + clientID);
+                        System.out.println("Allocated " + clientID);
+
+                    }else if (waitingQueue.size() < waitMax) {
+
+                        waitingQueue.add(clientID);
+
+                        pw.println("Wait " + clientID);
+                        System.out.println("Wait " + clientID);
+
+                    }else {
+
+                        pw.println("Full " + clientID);
+                        System.out.println("Full " + clientID);
+                    }
+
+                }else if (parts[0].equals("RELEASE")) {
+
+                    System.out.println("Before release: " + rooms.availablePermits());
+
+                    if (rooms.availablePermits() < totalRooms) {
+                        rooms.release();
+                    }
+
+                    System.out.println("After release: " + rooms.availablePermits());
+
+                    if (!waitingQueue.isEmpty()) {
+
+                        if (rooms.tryAcquire()) {
+
+                            int nextClient = waitingQueue.poll();
+
+                            pw.println("Allocated " + nextClient);
+
+                            System.out.println("Promoted from queue: " + nextClient);
+                        }
+                    }else{
+						System.out.println("WAITING QUEUE IS EMPTY"); 
+					}
                 }
-
-				String[] parts = message.split(" ");
-				//System.out.println(parts[0]);
-
-				synchronized(FittingRoomServer.class){
-
-
-					if(parts[0].equals("ALLOCATE")){
-						int clientID = Integer.parseInt(parts[1]);
-
-						if(rooms.tryAcquire()){
-							pw.println("Allocated to " + clientID);
-							System.out.println("Allocated to " + clientID);
-
-						}else if(waitingQueue.size() < waitMax){
-							waitingQueue.add(clientID);
-							pw.println("Wait " + clientID);
-							System.out.println("Wait " + clientID);
-
-						}else{
-							pw.println("Full " + clientID);
-							System.out.println("Full " + clientID);
-						}
-
-					}else if(parts[0].equals("RELEASE")){
-						System.out.println("Rooms avaiable BEFORE RELEASE: " + rooms.availablePermits());
-
-						if(rooms.availablePermits() < totalRooms){ // only release if there are clients waiting. 
-							rooms.release();
-						}else{
-							System.out.println("WARNING: Attempted to over-release rooms."); 
-							return; 
-						}
-
-						//AFTER releasing, assing next client if possible
-						if(!waitingQueue.isEmpty()){
-							int nextClient = waitingQueue.poll();
-
-							if(rooms.tryAcquire()){
-								pw.println("Next " + nextClient);
-								System.out.println("Assigned Room to waiting client " + nextClient);
-							}else{
-								//safely fallback in case
-								waitingQueue.add(nextClient);
-
-							}
-						
-						}
-
-						System.out.println("Rooms avaiable AFTER RELEASE: " + rooms.availablePermits());
-
-					}	
-				}
-			}	
-			
-		} catch (IOException e) {
-    		System.out.println("Failed to connect to Central Server");
-    		e.printStackTrace();
-    		return; 
-		}
-			
-
-	}
+            }
+        }
+    }
 }
