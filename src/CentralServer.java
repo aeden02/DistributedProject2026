@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class CentralServer{
-	//static int roomsAvailable = 3; 
+	static int nextRoom = 0; 
 	static Socket fittingRoom; //socket for fitting room connection.
 	static PrintWriter fitOut;
 	static BufferedReader fitIn;
@@ -57,26 +57,13 @@ public class CentralServer{
 	private static void startServerSockets() {
 	
 		try{
-		//serversocket for fittingroom (FittingRoom connects to CentralServer)
-			//ServerSocket fitroomSocket = new ServerSocket(50001); 
-			//System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
 			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
 
 			
-			//accept fittingroom
-
-				//fitOut = new PrintWriter(fittingRoom.getOutputStream(),true);
-				//fitIn = new BufferedReader(new InputStreamReader(fittingRoom.getInputStream()));	
-
-			
 			while(true){
-				//accept fitting room
-				//fittingRoom	= fitroomSocket.accept(); 
-				//System.out.println("CENTRAL: Fitting Room Connected!"); 
-
 				//accept client
 				System.out.println("CENTRAL: About to accept client connection..."); 
 				Socket clientSocket = server.accept(); 
@@ -116,10 +103,6 @@ public class CentralServer{
 				fittingRoom	= fitroomSocket.accept(); 
 				System.out.println("CENTRAL: Fitting Room Connected!"); 
 
-				//accept client
-				//System.out.println("CENTRAL: About to accept client connection..."); 
-				//Socket clientSocket = server.accept(); 
-
               	//ClientHandler client = new ClientHandler(clientSocket);
                 FittingRoomHandler fitting = new FittingRoomHandler(fittingRoom);
 				fittingRooms.add(fitting); 
@@ -127,7 +110,8 @@ public class CentralServer{
 
            		Thread t = new Thread(fitting);
 				
-            	String message = "Fitting room ith ip: " + fittingRoom.getInetAddress().getHostAddress() + " has connected. Total Fitting Rooms Servers: " + fittingRooms.size();
+            	String message = "Fitting room ith ip: " + fittingRoom.getInetAddress().getHostAddress() + 
+				" has connected. Total Fitting Rooms Servers: " + fittingRooms.size();
 				
 				System.out.println(message);
 
@@ -220,7 +204,8 @@ public class CentralServer{
 							System.out.println("FORWARDING REQUEST TO FITTING ROOM: " + request);
 
 							
-							FittingRoomHandler room = CentralServer.fittingRooms.get(0); //loop through fitting rooms? 
+							FittingRoomHandler room = CentralServer.fittingRooms.get(nextRoom); 
+							nextRoom = (nextRoom + 1) % CentralServer.fittingRooms.size(); 
 							assignedRoom = room;  //just using first room to test
 							
 
@@ -298,31 +283,36 @@ public class CentralServer{
 							//release current client first. 
 								hasRoom = false; //SET FIRST BEFORE RELEASING TO PREVENT MULTIPLE RELEASES.
 
-								if(assignedRoom.fitOut != null){
-									//assignedRoom.fitOut.println("RELEASE " + clientID);
+								String response = assignedRoom.sendRequest("RELEASE " + clientID);  
 
-									String response = assignedRoom.sendRequest("RELEASE " + clientID);  
-									
-								}
+								System.out.println("CENTRAL GOT FROM FITTING ROOM: " + response); 
+
+								if(response != null && response.startsWith("Allocated") ){
+									String [] parts = response.split(" "); 
+
+									int nextClientID = Integer.parseInt(parts[1]); 
+
+									ClientHandler nextClient = CentralServer.clientIDs.get(nextClientID); 
+
+									if(nextClient != null){
+										nextClient.clientOut.println("Room Allocated " + nextClientID); 
+
+										nextClient.hasRoom = true; 
+
+										System.out.println("Client " + nextClientID + " promoted from queue"); 
+									}
+								} 
+							
 
 							fittingRoomClients.remove(this);
 							
 							System.out.println("Client released a room.");
-							if(waitingClients.size() > 0){
-								System.out.println("Client " + waitingClients.peek().clientID + " at " + waitingClients.peek().client.getInetAddress().getHostAddress() + " is front of the queue");
-							}
-							else{
-								System.out.println("There are no clients in the queue");
-							}
-						
-								clientOut.println("Room Released");
-
-			
-							}else{
-								clientOut.println("No Rooms to release"); 
-							}
+							
+							clientOut.println("Room released");
+						}else{
+							clientOut.println("No rooms to release"); 
 						}
-
+					}
 						//exiting the client connection
 					} else if(request.equalsIgnoreCase("Exit")){
 						System.out.println("Client requested exit. Closing connection...");
