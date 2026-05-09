@@ -1,17 +1,19 @@
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
 public class CentralServer{
-	//static int roomsAvailable = 3; 
+	
 	static Socket fittingRoom; //socket for fitting room connection.
 	static PrintWriter fitOut;
 	static BufferedReader fitIn;
@@ -24,6 +26,9 @@ public class CentralServer{
 
 		//queue for clients that are in the fitting server -Courtney
 		static Queue<ClientHandler> fittingRoomClients = new LinkedList<>();
+
+		//ArrayList to hold the FittingRoom Handlers
+		static ArrayList<FittingRoomHandler> fittingRooms = new ArrayList<>(); 
 	
 	//how get room information from the fitting room. 
 	public static void main(String[] args) {
@@ -44,13 +49,7 @@ public class CentralServer{
 		//startServerSockets(); 
 
 	}
-	
-	private static void initializeRooms() {
-		//Add rooms(host, port, capacity)
-		//need information from fitting room 
-		//GetRoomInfomartion.  
 
-	}
 	
 
 	//ONLY handle client connections now. Removed shared fittingroom socket 
@@ -58,19 +57,10 @@ public class CentralServer{
 	private static void startServerSockets() {
 	
 		try{
-		//serversocket for fittingroom (FittingRoom connects to CentralServer)
-			//ServerSocket fitroomSocket = new ServerSocket(50001); 
-			//System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
 		//serversocket for client(Client connects to CentralServer)
 			ServerSocket server = new ServerSocket(50000);
 			System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
-
-			
-			//accept fittingroom
-
-				//fitOut = new PrintWriter(fittingRoom.getOutputStream(),true);
-				//fitIn = new BufferedReader(new InputStreamReader(fittingRoom.getInputStream()));	
 
 			
 			while(true){
@@ -111,32 +101,21 @@ public class CentralServer{
 			ServerSocket fitroomSocket = new ServerSocket(50001); 
 			System.out.println("CENTRAL: Listening for Fitting Rooms on port 50001..."); 
 
-		//serversocket for client(Client connects to CentralServer)
-			//ServerSocket server = new ServerSocket(50000);
-			//System.out.println("CentralServer running on port 50000...(waiting for Client)"); 
-
-			
-			//accept fittingroom
-
-				//fitOut = new PrintWriter(fittingRoom.getOutputStream(),true);
-				//fitIn = new BufferedReader(new InputStreamReader(fittingRoom.getInputStream()));	
-
 			
 			while(true){
 				//accept fitting room
 				fittingRoom	= fitroomSocket.accept(); 
 				System.out.println("CENTRAL: Fitting Room Connected!"); 
 
-				//accept client
-				//System.out.println("CENTRAL: About to accept client connection..."); 
-				//Socket clientSocket = server.accept(); 
-
               	//ClientHandler client = new ClientHandler(clientSocket);
                 FittingRoomHandler fitting = new FittingRoomHandler(fittingRoom);
+				fittingRooms.add(fitting); 
+				
 
            		Thread t = new Thread(fitting);
 				
-            	String message = "Fitting room ith ip: " + fittingRoom.getInetAddress().getHostAddress() + " has connected";
+            	String message = "Fitting room ith ip: " + fittingRoom.getInetAddress().getHostAddress() + 
+				" has connected. Total Fitting Rooms Servers: " + fittingRooms.size();
 				
 				System.out.println(message);
 
@@ -164,6 +143,7 @@ public class CentralServer{
 		public Socket client;
 		private ServerSocket fit;
 		private Socket fitClient;
+		private FittingRoomHandler assignedRoom; 
 		private boolean hasRoom = false; 
 		private boolean isWaiting = false; 
 		PrintWriter clientOut;
@@ -192,6 +172,33 @@ public class CentralServer{
 			clientOut.println("Room Allocated"); 
 		}
 
+		public void requestNewRoom(){
+			try{
+				for(FittingRoomHandler room : CentralServer.fittingRooms){
+					if(room.active){
+						String response = room.sendRequest("ALLOCATE " + clientID);
+
+						if(response.startsWith("Allocated")){
+							assignedRoom = room; 
+
+							hasRoom = true;
+
+							clientOut.println("Room Reassigned"); 
+
+							room.assignedClients.add(this); 
+
+							return; 
+						}
+					}
+				}
+
+				clientOut.println("No fitting rooms available"); 
+			}catch(Exception e){
+				e.printStackTrace(); 
+			}
+			
+		}
+
         @Override
         public void run() {
 			
@@ -211,7 +218,7 @@ public class CentralServer{
 					// wait for a bit, then exit
 
 					System.out.println("Client says: " + request); 
-			
+					
 
 					//REQUESTING ROOM
 					if(request.startsWith("Request Room")){
@@ -226,13 +233,38 @@ public class CentralServer{
 							
 							//send requestto fittingroom 
 							System.out.println("FORWARDING REQUEST TO FITTING ROOM: " + request);
+							String response = null; 
 
-							CentralServer.fitOut.println("ALLOCATE " + clientID);
-							//fitOut.flush();
-
-							//read response
-							String response = CentralServer.fitIn.readLine(); 
+							//** START OF LOGIC FOR THE ROUND ROBIN OF FITTING ROOMS
 							
+
+							for(int i = 0; i < CentralServer.fittingRooms.size(); i++){
+
+								int index = (clientID + i) % CentralServer.fittingRooms.size(); 
+								System.out.println("Trying fitting room index: " + index); 
+
+								FittingRoomHandler room = CentralServer.fittingRooms.get(index); 
+
+								try{
+								response = room.sendRequest("ALLOCATE " + clientID); 
+								}catch(IOException e){
+									System.out.println("Skipping dead fitting room.");
+
+									continue; 
+								}
+								if(!response.startsWith("Full")){
+
+									assignedRoom = room; 
+
+									 
+
+									break; 
+								}
+							}
+
+							
+							//END OF LOGIC FOR FITTING ROOM SERVERS
+	
 
 							System.out.println("CENTRAL GOT FROM FITTING ROOM: " + response);
 
@@ -245,6 +277,7 @@ public class CentralServer{
 
 									isWaiting = false; //no longer waiting for room. 
 									hasRoom = true; //mark client as having a room.
+									assignedRoom.assignedClients.add(this); 
 									clientOut.println("Room Allocated " + clientID); //send response to client
 									System.out.println("Client "+ clientID + " is in the fitting room.");
 									hasRoom = true; 
@@ -301,29 +334,36 @@ public class CentralServer{
 							//release current client first. 
 								hasRoom = false; //SET FIRST BEFORE RELEASING TO PREVENT MULTIPLE RELEASES.
 
-								if(CentralServer.fitOut != null){
-									CentralServer.fitOut.println("RELEASE " + clientID);
-									
-								}
+								String response = assignedRoom.sendRequest("RELEASE " + clientID);  
+								assignedRoom.assignedClients.remove(this); 
+								System.out.println("CENTRAL GOT FROM FITTING ROOM: " + response); 
+
+								if(response != null && response.startsWith("Allocated") ){
+									String [] parts = response.split(" "); 
+
+									int nextClientID = Integer.parseInt(parts[1]); 
+
+									ClientHandler nextClient = CentralServer.clientIDs.get(nextClientID); 
+
+									if(nextClient != null){
+										nextClient.clientOut.println("Room Allocated " + nextClientID); 
+
+										nextClient.hasRoom = true; 
+
+										System.out.println("Client " + nextClientID + " promoted from queue"); 
+									}
+								} 
+							
 
 							fittingRoomClients.remove(this);
 							
 							System.out.println("Client released a room.");
-							if(waitingClients.size() > 0){
-								System.out.println("Client " + waitingClients.peek().clientID + " at " + waitingClients.peek().client.getInetAddress().getHostAddress() + " is front of the queue");
-							}
-							else{
-								System.out.println("There are no clients in the queue");
-							}
-						
-								clientOut.println("Room Released");
-
-			
-							}else{
-								clientOut.println("No Rooms to release"); 
-							}
+							
+							clientOut.println("Room released");
+						}else{
+							clientOut.println("No rooms to release"); 
 						}
-
+					}
 						//exiting the client connection
 					} else if(request.equalsIgnoreCase("Exit")){
 						System.out.println("Client requested exit. Closing connection...");
@@ -336,7 +376,8 @@ public class CentralServer{
 
 			}catch(Exception e){
 
-				System.out.println("CENTRAL ERROR: Connection Disconnected.  ");
+				System.out.println("CENTRAL ERROR:");
+				e.printStackTrace(); 
 				return; 
 			} 
 
@@ -382,18 +423,66 @@ public class CentralServer{
 		String fitIP;
 		int rooms;
 		Socket fitting;
+		BufferedReader fitIn; 
+		PrintWriter fitOut; 
+		boolean active = true; 
+		ArrayList<ClientHandler> assignedClients = new ArrayList<>(); 
 
 		public FittingRoomHandler(Socket fitting){
 			this.fitting = fitting;
-
+			
+			try{
+			fitIn = new BufferedReader(new InputStreamReader(fitting.getInputStream()));
+			fitOut = new PrintWriter(fitting.getOutputStream(),true); 
+			}catch(IOException e){
+				System.out.println("IO EXCEPTION FROM FITIN AND FITOUT"); 
+			}
+			
+			
 		}
 
         @Override
         public void run() {
-			System.out.println("test");
-
-
+			
+			System.out.println("Fitting room handler thread started."); 
         }
+		public void recoverClients(){
+			for(ClientHandler client : assignedClients){
+				try{
+					client.hasRoom = false; 
+
+					client.clientOut.println("Fitting Room Server Down");
+
+					client.requestNewRoom(); 
+				}catch(Exception e){
+					e.printStackTrace(); 
+				}
+			}
+		}
+		public synchronized String sendRequest(String msg) throws IOException{
+			try{
+				fitOut.println(msg); 
+
+				String response = fitIn.readLine(); 
+
+				if(response == null){
+					throw new IOException("Fitting Room disconnected"); 
+				}
+
+				return response; 
+			}catch(IOException e){
+				active = false; 
+
+				System.out.println("FITTING ROOM SERVER DISCONNECTED"); 
+
+				CentralServer.fittingRooms.remove(this); 
+
+				recoverClients(); 
+
+				throw e; 
+			}
+			
+		}
 
 	}
 
