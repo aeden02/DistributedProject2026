@@ -44,7 +44,7 @@ public class FittingRoomServer {
 
             synchronized (FittingRoomServer.class) {
 
-                if (parts[0].equals("ALLOCATE")) {
+                if (parts[0].equals("ALLOCATE") || parts[0].equals("PRIORITY")) {
 
                     int clientID = Integer.parseInt(parts[1]);
 
@@ -62,7 +62,7 @@ public class FittingRoomServer {
 
                     }else if (parts[0].equals("PRIORITY")) {
                         replaceWaiting(clientID);
-                        
+
                         pw.println("Wait " + clientID);
                         System.out.println("Wait " + clientID);
                         
