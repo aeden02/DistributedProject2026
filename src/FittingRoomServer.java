@@ -10,6 +10,11 @@ public class FittingRoomServer {
     static Queue<Integer> waitingQueue = new LinkedList<>();
     static int totalRooms;
 
+    public static void replaceWaiting(int clientID){
+        waitingQueue.remove();
+        waitingQueue.add(clientID);
+    }
+
     public static void main(String[] args) throws IOException {
 
         int totalRoomsArg = Integer.parseInt(args[0]);
@@ -55,6 +60,12 @@ public class FittingRoomServer {
                         pw.println("Wait " + clientID);
                         System.out.println("Wait " + clientID);
 
+                    }else if (parts[0].equals("PRIORITY")) {
+                        replaceWaiting(clientID);
+                        
+                        pw.println("Wait " + clientID);
+                        System.out.println("Wait " + clientID);
+                        
                     }else {
 
                         pw.println("Full " + clientID);
