@@ -11,6 +11,8 @@ public class Client{
     public int clientID; //This was private.
     public String serverIP;
 
+    public String fittingRoomServerIP;
+
     public Client(String serverIP, int port, int clientID){
         this.serverIP = serverIP;
         this.port = port;
@@ -27,17 +29,22 @@ public class Client{
             new ServerListener().start();
         }catch(IOException e){
             e.printStackTrace();
-            System.out.println("Unable to connect to central serer");
+            System.out.println("Unable to connect to central server");
             return;
         }
     }
 
-    private class ServerListener extends Thread{
+    public class ServerListener extends Thread{
         public void run(){
             try{
+                //Threaded to make responses.
                 String response;
                 while(socket !=null && !socket.isClosed() && (response = br.readLine()) != null){
+                    //fittingRoomIP = CentralServer.ClientHandler.fittingRoomServerIP + "TESTTTY";
+                    //System.out.println("SERVER IP: CONSOLE: " + fittingRoomIP);
+                    //this.fittingRoomServerIP = response.substring(response.indexOf(":") + 1,response.length());
                     responseHandler(response);
+                    
                     
                 }
 
@@ -54,29 +61,41 @@ public class Client{
     }
 
     private void display(String message){
-        System.out.println("Customer #" + clientID + " " + message + " <Server: " + serverIP + ">");
+
+        //System.out.println("Customer #" + clientID + " " + message + " <Server: " + fittingRoomServerIP + ">");
+        System.out.println("Customer #" + clientID + " " + message);
     }
 
     private void responseHandler(String response){
+        if(response.contains(":")){
 
-        System.out.println("Server: " + response);
-        if (response.startsWith("Room Allocated")) {
+            this.fittingRoomServerIP = response.substring(response.indexOf(":") + 1); 
+            System.out.println("Server: " + response.substring(0,response.indexOf(":")));
+        }else{
+            System.out.println("Server: " + response); 
+        }
+
+        //this.fittingRoomServerIP = response.substring(response.indexOf(":") + 1, response.length());
+       // System.out.println("Server: " + response.substring(0,response.indexOf(":")));
+       
+        if (response.startsWith("Room Allocated")) { //If Allocated, customer use the room.
             hasRoom = true;
-            display("leaves waiting area and enters fitting room");
+            display("leaves waiting area and enters fitting room <Server: " + this.fittingRoomServerIP + ">");
             simulateFittingRoomUse();
 
-        } else if (response.startsWith("Wait")) {
+        } else if (response.startsWith("Wait")) { //If the customer waits, they sit in the waiting area for a room.
 
-            display("enters the waiting area and takes a seat");
+            display("enters the waiting area and takes a seat <Server: " + this.fittingRoomServerIP + ">");
 
-        } else if (response.equals("Room Available")) {
+        } else if (response.equals("Room Available")) { //If the central server sends a room available message, the customer is notified the room is available.
 
-            display("notified that a fitting room is available");
+            display("notified that a fitting room is available <Server: " + this.fittingRoomServerIP + ">");
             requestFittingRoom();
 
-        } else if(response.equals("Full")) {
-            display("leaves the store (no space available)");
+        } else if(response.equals("Full")) { //Customer leaves the store because no waiting seats or rooms are available.
+            display("leaves the store (no space available) <Server: " + this.fittingRoomServerIP + ">");
             exit();
+            
          }else{
 
           System.out.println("Unknown response :" + response);
@@ -89,8 +108,9 @@ public class Client{
             System.out.println("Client: Not Connected - Cannot Send.");
             return;
         }
-        pw.println("Request Room " + clientID); 
-        display("requests a fitting room");
+
+        pw.println("Request Room " + clientID); //Send a request for a fittingroom to the central server.
+        display("requests a fitting room"); //Prints message of status.
     }
 
     //When client is done with fitting room
@@ -99,7 +119,7 @@ public class Client{
             pw.println("Release Room " + clientID);
             hasRoom = false;
             System.out.println("Released Fitting Room.");
-            display("leaves fitting room");
+            //display("leaves fitting room" + "<Server: " + this.fittingRoomServerIP + ">");
         }    
     }
 
@@ -127,7 +147,7 @@ public class Client{
                 Thread.sleep(100);
             }catch(InterruptedException e){  }
     		
-            display("Leaving Fitting Room...");
+            display("Leaving Fitting Room..."+ "<Server: " + this.fittingRoomServerIP + ">");
             exit(); 
 
 		} catch (InterruptedException e) {
@@ -143,7 +163,7 @@ public class Client{
     }
 
     
-        int totalCustomers = Integer.parseInt(args[0]);
+        int totalCustomers = Integer.parseInt(args[0]); //How many customers will be sent to fitting room.
         
         String serverIP = "127.0.0.1";
     	int port = 50000;
@@ -154,16 +174,18 @@ public class Client{
     	while (clientId <= totalCustomers) {
         	int id = clientId++;
 
-    		new Thread(new Runnable() {
+    		new Thread(new Runnable() { //Continiously create customer threads that enters the system to request a fittingroom.
     			@Override
     			public void run() {
-        			Client client = new Client(serverIP, port, id);
+        			//Client client = new Client(serverIP, port, id);
+                    Client client = new Client(serverIP, port,id);
         			client.display("enters the system");
         			client.requestFittingRoom();
 
                     //KEEP CLIENT ALIVE UNTIL IT EXITS ON ITS OWN. 
                     //OTHERWISE, MAIN THREAD WILL EXIT AND CLOSE CONNECTION. 
                     try{
+                        //Adding a timer for each customer to request a room.
                         while(client.socket != null && !client.socket.isClosed()){
                             Thread.sleep(100);
                         }
