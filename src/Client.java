@@ -1,8 +1,6 @@
 import java.io.*;
 import java.net.*;
 
-//import com.CentralServer.ClientHandler;
-
 public class Client{
     public Socket socket;
     private BufferedReader br;//input

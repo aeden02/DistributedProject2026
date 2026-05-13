@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.io.IOException; 
 import java.util.ArrayList;
-
+//EE
 public class CentralServer{
 	//static int roomsAvailable = 3; 
 	static Socket fittingRoom; //socket for fitting room connection.
