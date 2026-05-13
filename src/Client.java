@@ -77,7 +77,10 @@ public class Client{
         } else if(response.equals("Full")) {
             display("leaves the store (no space available)");
             exit();
-         }else{
+        } else if(response.equals("Replaced")) {
+            display("leaves the store (replaced in waiting with higher priority client)");
+            exit();
+        } else{
 
           System.out.println("Unknown response :" + response);
         }

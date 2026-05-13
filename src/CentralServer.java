@@ -344,6 +344,16 @@ public class CentralServer{
 										System.out.println("WARNING: Client " + nextClientID + "not found or disconnected.");
 									}
 								
+								}
+								else if(response.startsWith("Replaced")) {
+									String[] responseParts = response.split(" ");
+
+									System.out.println("Client " + responseParts[1] + " got replaced with " + responseParts[3]);
+									
+									clientOut.println("Wait"); //send response to client
+									//System.out.println("Client " + clientID + 
+									//" has been kicked"); 
+
 								}else{
 									System.out.println("Invalid response from fitting room: " + response); 
 									clientOut.println("ERROR WITH FITTING ROOM: INVALID RESPONSE"); //send response to client

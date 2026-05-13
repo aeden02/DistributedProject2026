@@ -8,11 +8,21 @@ public class FittingRoomServer {
     static Semaphore rooms;
     static int waitMax;
     static Queue<Integer> waitingQueue = new LinkedList<>();
+    static Queue<Integer> priorityQueue = new LinkedList<>();
     static int totalRooms;
 
-    public static void replaceWaiting(int clientID){
-        waitingQueue.remove();
-        waitingQueue.add(clientID);
+    public static int replaceWaiting(int clientID){
+        for(Integer i: waitingQueue){
+            if(!priorityQueue.contains(i)){
+                
+                waitingQueue.add(clientID);
+                waitingQueue.remove(i);
+
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     public static void main(String[] args) throws IOException {
@@ -60,11 +70,21 @@ public class FittingRoomServer {
                         pw.println("Wait " + clientID);
                         System.out.println("Wait " + clientID);
 
-                    }else if (parts[0].equals("PRIORITY")) {
-                        replaceWaiting(clientID);
+                    }else if (parts[0].equals("PRIORITY")) { //When fitting room shuts down, if a client was changing they will
+                        priorityQueue.add(clientID);         //have priority status over other clients
 
-                        pw.println("Wait " + clientID);
-                        System.out.println("Wait " + clientID);
+                        int replaced = replaceWaiting(clientID);
+                        if(replaced != -1){
+                            pw.println("Replaced " + replaced + " with " + clientID);
+                            System.out.println("Replaced " + replaced + " with " + clientID);
+
+                        }
+                        else{
+                            priorityQueue.remove(clientID);         //if there are already prioritized clients, then leave angry
+                            pw.println("Full " + clientID);
+                            System.out.println("Full " + clientID);
+                        }
+
                         
                     }else {
 
@@ -73,11 +93,15 @@ public class FittingRoomServer {
                     }
 
                 }else if (parts[0].equals("RELEASE")) {
+                    int id = Integer.parseInt(parts[1]);
 
                     System.out.println("Before release: " + rooms.availablePermits());
 
                     if (rooms.availablePermits() < totalRooms) {
                         rooms.release();
+                    }
+                    if(priorityQueue.contains(id)){
+                        priorityQueue.remove(id);
                     }
 
                     System.out.println("After release: " + rooms.availablePermits());
