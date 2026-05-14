@@ -107,6 +107,17 @@ public class CentralServer{
 
 	}
 
+	public static void printConnectedRooms(){
+		System.out.println("====Connected Fitting Room Servers ====");
+		for(FittingRoomHandler room : fittingRooms){
+			if(room.active){
+			System.out.println("IP: " + room.getFittingRoomIP() + "| Active: " + room.active);
+			}else{
+				System.out.println("IP: " + room.getFittingRoomIP() + "| Active: " + room.active);
+			}
+		}
+		System.out.println("Total: " + fittingRooms.size()); 
+	}
 	public static void startFittingServers(){
 
 		try{
@@ -131,9 +142,8 @@ public class CentralServer{
 				" has connected. Total Fitting Rooms Servers: " + fittingRooms.size();
 				
 				System.out.println(message);
-
-				//adds clients to a waiting queue
-				//waitingClients.add();
+				
+				printConnectedRooms(); 
 
 				t.start(); 
 			}
@@ -685,7 +695,8 @@ public class CentralServer{
 
 			recovering = true;
 
-
+			CentralServer.printConnectedRooms();
+			
 			//clean up client states 
 			for(ClientHandler client : temp){
 				try{
@@ -760,16 +771,22 @@ public class CentralServer{
 				if(response == null){
 
 					if(!recovering){
-						recovering = true; 
-						active = false; 
-						CentralServer.fittingRooms.remove(this); 
-						System.out.println("Remaining Fitting Room Servers: " + CentralServer.fittingRooms.size());
-				
+						System.out.println("====CRASHED SERVER IP: " + getFittingRoomIP()); 
+
+						synchronized(CentralServer.fittingRooms){
+							recovering = true; 
+							active = false; 
+ 
+							CentralServer.fittingRooms.remove(this); 
+							System.out.println("Remaining Fitting Room Servers: " + CentralServer.fittingRooms.size());
+						}
+
+						CentralServer.printConnectedRooms();				
 						recoverClients();
 					}
 
 
-					throw new IOException("Fitting Room disconnected"); 
+					throw new IOException("Fitting Room disconnected " + getFittingRoomIP()); 
 
 					
 				}
@@ -778,13 +795,20 @@ public class CentralServer{
 			}catch(IOException e){
 
 				if(!recovering){
-					recovering = true;
-					active = false; 
+					System.out.println("===FITTING ROOM CRASHED==="); 
+					System.out.println("=====Crashed Server IP: " + getFittingRoomIP()); 
 
-					System.out.println("FITTING ROOM SERVER DISCONNECTED"); 
+					synchronized(CentralServer.fittingRoom){
+						recovering = true;
+						active = false; 
 
-					CentralServer.fittingRooms.remove(this); 
-					System.out.println("Remaining Fitting Room Servers: " + CentralServer.fittingRooms.size()); 
+						System.out.println("FITTING ROOM SERVER DISCONNECTED"); 
+
+						CentralServer.fittingRooms.remove(this); 
+						System.out.println("Remaining Fitting Room Servers: " + CentralServer.fittingRooms.size()); 
+					
+					}
+					
 					recoverClients(); 
 				}
 			
