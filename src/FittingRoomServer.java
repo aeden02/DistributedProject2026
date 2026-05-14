@@ -5,85 +5,325 @@ import java.util.concurrent.Semaphore;
 
 public class FittingRoomServer {
 
+    // ========================= ROOM CONTROL =========================
+
     static Semaphore rooms;
-    static int waitMax;
-    static Queue<Integer> waitingQueue = new LinkedList<>();
+
     static int totalRooms;
 
-    public static void main(String[] args) throws IOException {
+    static int waitMax;
 
-        int totalRoomsArg = Integer.parseInt(args[0]);
-        totalRooms = totalRoomsArg;
+    // ========================= QUEUES =========================
 
-        rooms = new Semaphore(totalRoomsArg);
-        waitMax = totalRoomsArg * 2;
+    // CLIENTS WHO WERE INSIDE A ROOM
+    // WHEN A SERVER CRASHED
+    static Queue<Integer> activeRecoveryQueue =
+            new LinkedList<>();
 
-        System.out.println("Fitting Room Server started...");
+    // CLIENTS WHO WERE WAITING
+    // WHEN A SERVER CRASHED
+    static Queue<Integer> waitingRecoveryQueue =
+            new LinkedList<>();
 
-        Socket central = new Socket("127.0.0.1", 50001);
+    // NORMAL CLIENTS
+    static Queue<Integer> normalWaitingQueue =
+            new LinkedList<>();
+
+    // ========================= MAIN =========================
+
+    public static void main(String[] args)
+            throws IOException {
+
+        if (args.length < 1) {
+
+            System.out.println(
+                    "Usage: java FittingRoomServer <rooms>");
+
+            return;
+        }
+
+        totalRooms =
+                Integer.parseInt(args[0]);
+
+        rooms =
+                new Semaphore(totalRooms);
+
+        waitMax =
+                totalRooms * 2;
+
+        System.out.println(
+                "Fitting Room Server Started");
+
+        // ========================= CONNECT TO CENTRAL
+
+        Socket central =
+                new Socket("127.0.0.1", 50001);
 
         BufferedReader br =
-                new BufferedReader(new InputStreamReader(central.getInputStream()));
+                new BufferedReader(
+                        new InputStreamReader(
+                                central.getInputStream()));
 
         PrintWriter pw =
-                new PrintWriter(central.getOutputStream(), true);
+                new PrintWriter(
+                        central.getOutputStream(),
+                        true);
+
+        System.out.println(
+                "Connected to Central Server");
+
+        // ========================= MAIN LOOP =========================
 
         while (true) {
 
-            String message = br.readLine();
-            System.out.println("MESSAGE: " + message);
+            String message =
+                    br.readLine();
 
-            if (message == null) break;
+            if (message == null) {
 
-            String[] parts = message.split(" ");
+                System.out.println(
+                        "Central Server disconnected.");
 
-            synchronized (FittingRoomServer.class) {
+                break;
+            }
 
-                if (parts[0].equals("ALLOCATE")) {
+            System.out.println(
+                    "MESSAGE: " + message);
 
-                    int clientID = Integer.parseInt(parts[1]);
+            String[] parts =
+                    message.split(" ");
+
+            synchronized (
+                    FittingRoomServer.class) {
+
+                // ========================= ALLOCATE
+
+                if (parts[0].equals("ALLOCATE") ||
+
+                        parts[0].equals(
+                                "RECOVER_ACTIVE") ||
+
+                        parts[0].equals(
+                                "RECOVER_WAITING")) {
+
+                    int clientID =
+                            Integer.parseInt(
+                                    parts[1]);
+
+                    // ========================= ROOM AVAILABLE
 
                     if (rooms.tryAcquire()) {
 
-                        pw.println("Allocated " + clientID);
-                        System.out.println("Allocated " + clientID);
+                        pw.println(
+                                "Allocated "
+                                        + clientID);
 
-                    }else if (waitingQueue.size() < waitMax) {
+                        System.out.println(
+                                "Allocated "
+                                        + clientID);
 
-                        waitingQueue.add(clientID);
-
-                        pw.println("Wait " + clientID);
-                        System.out.println("Wait " + clientID);
-
-                    }else {
-
-                        pw.println("Full " + clientID);
-                        System.out.println("Full " + clientID);
                     }
 
-                }else if (parts[0].equals("RELEASE")) {
+                    // ========================= NO ROOM
 
-                    System.out.println("Before release: " + rooms.availablePermits());
+                    else {
 
-                    if (rooms.availablePermits() < totalRooms) {
-                        rooms.release();
-                    }
+                        // ================= ACTIVE RECOVERY
+                        // HIGHEST PRIORITY
 
-                    System.out.println("After release: " + rooms.availablePermits());
+                        if (parts[0].equals(
+                                "RECOVER_ACTIVE")) {
 
-                    if (!waitingQueue.isEmpty()) {
+                            if (!activeRecoveryQueue
+                                    .contains(clientID)) {
 
-                        if (rooms.tryAcquire()) {
+                                activeRecoveryQueue
+                                        .add(clientID);
+                            }
 
-                            int nextClient = waitingQueue.poll();
+                            pw.println(
+                                    "Wait "
+                                            + clientID);
 
-                            pw.println("Allocated " + nextClient);
+                            System.out.println(
+                                    "RECOVER_ACTIVE WAIT "
+                                            + clientID);
+                        }
 
-                            System.out.println("Promoted from queue: " + nextClient);
+                        // ================= WAITING RECOVERY
+                        // SECOND PRIORITY
+
+                        else if (parts[0].equals(
+                                "RECOVER_WAITING")) {
+
+                            if (!waitingRecoveryQueue
+                                    .contains(clientID)) {
+
+                                waitingRecoveryQueue
+                                        .add(clientID);
+                            }
+
+                            pw.println(
+                                    "Wait "
+                                            + clientID);
+
+                            System.out.println(
+                                    "RECOVER_WAITING WAIT "
+                                            + clientID);
+                        }
+
+                        // ================= NORMAL CLIENTS
+
+                        else {
+
+                            int totalWaiting =
+                                    activeRecoveryQueue.size()
+                                            + waitingRecoveryQueue.size()
+                                            + normalWaitingQueue.size();
+
+                            if (totalWaiting < waitMax) {
+
+                                if (!normalWaitingQueue
+                                        .contains(clientID)) {
+
+                                    normalWaitingQueue
+                                            .add(clientID);
+                                }
+
+                                pw.println(
+                                        "Wait "
+                                                + clientID);
+
+                                System.out.println(
+                                        "WAIT "
+                                                + clientID);
+
+                            } else {
+
+                                pw.println("Full");
+
+                                System.out.println(
+                                        "FULL "
+                                                + clientID);
+                            }
                         }
                     }
                 }
+
+                // ========================= RELEASE
+
+                else if (parts[0].equals(
+                        "RELEASE")) {
+
+                    int clientID =
+                            Integer.parseInt(
+                                    parts[1]);
+
+                    System.out.println(
+                            "RELEASE FROM "
+                                    + clientID);
+
+                    // RELEASE ROOM
+
+                    if (rooms.availablePermits()
+                            < totalRooms) {
+
+                        rooms.release();
+                    }
+
+                    int nextClient = -1;
+
+                    // ========================= PRIORITY 1
+                    // CLIENTS WHO LOST ACTIVE ROOM
+
+                    if (!activeRecoveryQueue.isEmpty()) {
+
+                        nextClient =
+                                activeRecoveryQueue.poll();
+
+                        System.out.println(
+                                "PROMOTING ACTIVE RECOVERY "
+                                        + nextClient);
+                    }
+
+                    // ========================= PRIORITY 2
+                    // CLIENTS WHO LOST WAITING POSITION
+
+                    else if (!waitingRecoveryQueue
+                            .isEmpty()) {
+
+                        nextClient =
+                                waitingRecoveryQueue.poll();
+
+                        System.out.println(
+                                "PROMOTING WAITING RECOVERY "
+                                        + nextClient);
+                    }
+
+                    // ========================= PRIORITY 3
+                    // NORMAL WAITING CLIENTS
+
+                    else if (!normalWaitingQueue
+                            .isEmpty()) {
+
+                        nextClient =
+                                normalWaitingQueue.poll();
+
+                        System.out.println(
+                                "PROMOTING NORMAL "
+                                        + nextClient);
+                    }
+
+                    // ========================= PROMOTE CLIENT
+
+                    if (nextClient != -1) {
+
+                        // IMMEDIATELY CLAIM ROOM
+                        rooms.tryAcquire();
+
+                        pw.println(
+                                "Promoted "
+                                        + nextClient);
+
+                        System.out.println(
+                                "Promoted "
+                                        + nextClient);
+
+                    }
+
+                    // ========================= NO WAITING CLIENTS
+
+                    else {
+
+                        pw.println("Released");
+
+                        System.out.println(
+                                "No waiting clients.");
+                    }
+                }
+
+                // ========================= INVALID
+
+                else {
+
+                    pw.println("Invalid");
+
+                    System.out.println(
+                            "Invalid Request");
+                }
             }
+        }
+
+        // ========================= CLEANUP
+
+        try {
+
+            br.close();
+            pw.close();
+            central.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
