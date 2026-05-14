@@ -8,14 +8,14 @@ public class Client {
     PrintWriter out;
 
     int clientID;
-    String fittingRoomServerIP;
+    String fittingRoomServerIP = "null";
 
     boolean hasRoom = false;
     boolean isWaiting = false;
 
     public Client(String ip, int port, int id) {
 
-        this.clientID = id;
+        clientID = id;
 
         try {
 
@@ -45,24 +45,23 @@ public class Client {
 
                     if (response.contains(":")) {
 
-                        String[] p = response.split(":");
+                        String[] parts = response.split(":");
 
-                        fittingRoomServerIP = p[1];
+                        fittingRoomServerIP = parts[1];
 
-                        response = p[0];
-
-                        System.out.println("Server: " + response);
+                        response = parts[0];
                     }
+
+                    System.out.println("Server: " + response);
 
                     if (response.startsWith("Room Allocated")) {
 
                         hasRoom = true;
                         isWaiting = false;
 
-                        System.out.println(
-                                "Customer #" + clientID +
-                                        " enters fitting room <Server: " +
-                                        fittingRoomServerIP + ">");
+                        System.out.println("Customer #" + clientID +
+                                " enters fitting room <Server: " +
+                                fittingRoomServerIP + ">");
 
                         simulate();
                     }
@@ -71,22 +70,18 @@ public class Client {
 
                         isWaiting = true;
 
-                        System.out.println(
-                                "Customer #" + clientID +
-                                        " enters waiting area <Server: " +
-                                        fittingRoomServerIP + ">");
+                        System.out.println("Customer #" + clientID +
+                                " enters waiting area <Server: " +
+                                fittingRoomServerIP + ">");
                     }
 
                     else if (response.startsWith("Full")) {
 
-                        System.out.println(
-                                "Customer #" + clientID +
-                                        " leaves store (full)");
+                        System.out.println("Customer #" + clientID +
+                                " leaves store (full)");
                     }
 
                     else if (response.startsWith("Fitting Room Server Down")) {
-
-                        System.out.println("Server crashed — retrying");
                         request();
                     }
                 }
@@ -117,10 +112,9 @@ public class Client {
 
                 Thread.sleep(100);
 
-                System.out.println(
-                        "Customer #" + clientID +
-                                " Leaving Fitting Room...<Server: " +
-                                fittingRoomServerIP + ">");
+                System.out.println("Customer #" + clientID +
+                        " Leaving Fitting Room...<Server: " +
+                        fittingRoomServerIP + ">");
 
                 out.println("Exit");
 
