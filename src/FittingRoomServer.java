@@ -21,17 +21,14 @@ public class FittingRoomServer {
 
         BufferedReader br =
                 new BufferedReader(
-                        new InputStreamReader(
-                                central.getInputStream()));
+                        new InputStreamReader(central.getInputStream()));
 
         PrintWriter pw =
-                new PrintWriter(
-                        central.getOutputStream(), true);
+                new PrintWriter(central.getOutputStream(), true);
 
         while (true) {
 
             String msg = br.readLine();
-
             if (msg == null) break;
 
             String[] p = msg.split(" ");
@@ -43,16 +40,11 @@ public class FittingRoomServer {
                     int id = Integer.parseInt(p[1]);
 
                     if (rooms.tryAcquire()) {
-
                         pw.println("Allocated " + id);
-                    }
-
-                    else {
-
+                    } else {
                         if (!waitingQueue.contains(id)) {
                             waitingQueue.add(id);
                         }
-
                         pw.println("Wait " + id);
                     }
                 }
@@ -61,22 +53,15 @@ public class FittingRoomServer {
 
                     int id = Integer.parseInt(p[1]);
 
-                    if (rooms.availablePermits()
-                            < totalRooms) {
-
+                    if (rooms.availablePermits() < totalRooms) {
                         rooms.release();
                     }
 
                     if (!waitingQueue.isEmpty()) {
-
                         int next = waitingQueue.poll();
-
                         rooms.tryAcquire();
-
                         pw.println("Promoted " + next);
-                    }
-
-                    else {
+                    } else {
                         pw.println("Released");
                     }
                 }
