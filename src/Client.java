@@ -1,3 +1,15 @@
+/********************************
+Name: Team 2:
+Spencer Giles
+Courtney Nguyen
+Matthew Ringgold
+Michael Delgado
+Allison Eden
+Problem Set: Final Group Project
+Due Date: May 14, 2026
+********************************/
+
+
 import java.io.*;
 import java.net.*;
 
@@ -220,8 +232,13 @@ public class Client{
                     //OTHERWISE, MAIN THREAD WILL EXIT AND CLOSE CONNECTION. 
                     try{
                         //Adding a timer for each customer to request a room.
-                        while((client.socket != null && !client.socket.isClosed())){
+                        while(client.hasRoom || client.isWaiting|| (client.socket != null && !client.socket.isClosed())){
                             Thread.sleep(100);
+
+                            //if client no longer has room or is waiting then force clean up. 
+                            if(!client.hasRoom && !client.isWaiting && client.socket != null && !client.socket.isClosed()){
+                                client.exit(); 
+                            }
                         }
                     }catch(Exception e){
                         e.printStackTrace();

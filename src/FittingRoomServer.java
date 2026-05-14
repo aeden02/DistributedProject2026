@@ -1,3 +1,15 @@
+/********************************
+Name: Team 2:
+Spencer Giles
+Courtney Nguyen
+Matthew Ringgold
+Michael Delgado
+Allison Eden
+Problem Set: Final Group Project
+Due Date: May 14, 2026
+********************************/
+
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -19,8 +31,7 @@ public class FittingRoomServer {
         ArrayList<Integer> tempQueue = new ArrayList<>(waitingQueue);
 
         for(Integer i: tempQueue){
-           
-            
+        
             //find first normal waiting client
             if(!priorityQueue.contains(i)){
                 replacedClient = i; 
@@ -110,14 +121,13 @@ public class FittingRoomServer {
                         }
                         else if(waitingQueue.size() < waitMax){
 
-                            if(!waitingQueue.contains(clientID)){
-                                waitingQueue.add(clientID);
-                            }
-                           
-                            if(!priorityQueue.contains(clientID)){
-                                priorityQueue.add(clientID); 
-                            }
-                           
+                            //remove old copies
+                            waitingQueue.remove(Integer.valueOf(clientID));
+                            priorityQueue.remove(Integer.valueOf(clientID)); 
+
+                           //re-add once
+                           waitingQueue.add(clientID);
+                           priorityQueue.add(clientID); 
                             
                             pw.println("Wait " + clientID);
 
@@ -160,36 +170,20 @@ public class FittingRoomServer {
                     if (!waitingQueue.isEmpty()) {
 
   
-                        int nextClient = -1;
+                        int nextClient;
+                        if(!priorityQueue.isEmpty()){
+                            nextClient = priorityQueue.poll(); 
 
-                        while(!priorityQueue.isEmpty()){
-
-                            int temp = priorityQueue.poll();
-
-                            if(waitingQueue.contains(temp)){
-                                waitingQueue.remove(Integer.valueOf(temp));
-                                nextClient = temp; 
-                                break; 
-                            }
+                            waitingQueue.remove(Integer.valueOf(nextClient));
+                        }else{
+                            nextClient = waitingQueue.poll(); 
                         }
-                    
-                        if(nextClient == -1){
-                            while(!waitingQueue.isEmpty()){
-                                int temp = waitingQueue.poll();
 
-                                if(!priorityQueue.contains(temp)){
-                                    nextClient = temp;
-                                    break;
-                                }
-                            }
-                            
-                        }
-                    
-                    if(nextClient != -1){
-                        pw.println("Promoted " + nextClient); 
+                        priorityQueue.remove(Integer.valueOf(nextClient));
+
+                         pw.println("Promoted " + nextClient); 
                          System.out.println("Promoted from queue: " + nextClient);
-                                          
-            
+
                         
                     }else{
 						pw.println("Released."); 
@@ -199,4 +193,4 @@ public class FittingRoomServer {
             }
         }
     }
-}}
+}
