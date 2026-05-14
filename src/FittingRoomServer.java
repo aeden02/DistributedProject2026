@@ -19,15 +19,8 @@ public class FittingRoomServer {
         ArrayList<Integer> tempQueue = new ArrayList<>(waitingQueue);
 
         for(Integer i: tempQueue){
+           
             
-            //remove dead clients
-            if(CentralServer.clientIDs.get(i)==null){
-                waitingQueue.remove(i);
-                priorityQueue.remove(i); 
-
-                continue; 
-            }
-
             //find first normal waiting client
             if(!priorityQueue.contains(i)){
                 replacedClient = i; 
@@ -117,13 +110,14 @@ public class FittingRoomServer {
                         }
                         else if(waitingQueue.size() < waitMax){
 
-                            //remove old copies
-                            waitingQueue.remove(Integer.valueOf(clientID));
-                            priorityQueue.remove(Integer.valueOf(clientID)); 
-
-                           //re-add once
-                           waitingQueue.add(clientID);
-                           priorityQueue.add(clientID); 
+                            if(!waitingQueue.contains(clientID)){
+                                waitingQueue.add(clientID);
+                            }
+                           
+                            if(!priorityQueue.contains(clientID)){
+                                priorityQueue.add(clientID); 
+                            }
+                           
                             
                             pw.println("Wait " + clientID);
 
@@ -166,20 +160,36 @@ public class FittingRoomServer {
                     if (!waitingQueue.isEmpty()) {
 
   
-                        int nextClient;
-                        if(!priorityQueue.isEmpty()){
-                            nextClient = priorityQueue.poll(); 
+                        int nextClient = -1;
 
-                            waitingQueue.remove(Integer.valueOf(nextClient));
-                        }else{
-                            nextClient = waitingQueue.poll(); 
+                        while(!priorityQueue.isEmpty()){
+
+                            int temp = priorityQueue.poll();
+
+                            if(waitingQueue.contains(temp)){
+                                waitingQueue.remove(Integer.valueOf(temp));
+                                nextClient = temp; 
+                                break; 
+                            }
                         }
+                    
+                        if(nextClient == -1){
+                            while(!waitingQueue.isEmpty()){
+                                int temp = waitingQueue.poll();
 
-                        priorityQueue.remove(Integer.valueOf(nextClient));
-
-                         pw.println("Promoted " + nextClient); 
+                                if(!priorityQueue.contains(temp)){
+                                    nextClient = temp;
+                                    break;
+                                }
+                            }
+                            
+                        }
+                    
+                    if(nextClient != -1){
+                        pw.println("Promoted " + nextClient); 
                          System.out.println("Promoted from queue: " + nextClient);
-
+                                          
+            
                         
                     }else{
 						pw.println("Released."); 
@@ -189,4 +199,4 @@ public class FittingRoomServer {
             }
         }
     }
-}
+}}
