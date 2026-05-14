@@ -717,7 +717,7 @@ public class CentralServer{
 
 
 					}else if(client.isWaiting){
-						client.wasChanging = false; 
+						client.wasChanging = true; 
 						client.recoveringClient = true; 
 
 						client.isWaiting = false;
