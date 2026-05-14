@@ -771,7 +771,7 @@ public class CentralServer{
 				if(response == null){
 
 					if(!recovering){
-						System.out.println("====CRASHED SERVER IP: " + getFittingRoomIP()); 
+						System.out.println("====CRASHED SERVER IP: " + fitIP); 
 
 						synchronized(CentralServer.fittingRooms){
 							recovering = true; 
@@ -786,7 +786,7 @@ public class CentralServer{
 					}
 
 
-					throw new IOException("Fitting Room disconnected " + getFittingRoomIP()); 
+					throw new IOException("Fitting Room disconnected " + fitIP); 
 
 					
 				}
@@ -796,7 +796,7 @@ public class CentralServer{
 
 				if(!recovering){
 					System.out.println("===FITTING ROOM CRASHED==="); 
-					System.out.println("=====Crashed Server IP: " + getFittingRoomIP()); 
+					System.out.println("=====Crashed Server IP: " + fitIP); 
 
 					synchronized(CentralServer.fittingRoom){
 						recovering = true;
