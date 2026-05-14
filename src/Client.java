@@ -7,66 +7,137 @@ public class Client {
     BufferedReader in;
     PrintWriter out;
 
-    int id;
-    String roomIP = "Unknown";
+    int clientID;
+    String fittingRoomServerIP;
 
-    public Client(String host, int port, int id) {
+    boolean hasRoom = false;
+    boolean isWaiting = false;
 
-        this.id = id;
+    public Client(String ip, int port, int id) {
+
+        this.clientID = id;
 
         try {
 
-            socket = new Socket(host, port);
+            socket = new Socket(ip, port);
 
             in = new BufferedReader(
                     new InputStreamReader(socket.getInputStream()));
 
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            new Thread(this::listen).start();
+            new ServerListener().start();
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    void listen() {
+    class ServerListener extends Thread {
 
-        try {
+        public void run() {
 
-            String msg;
+            try {
 
-            while ((msg = in.readLine()) != null) {
+                String response;
 
-                if (msg.contains(":")) {
-                    String[] p = msg.split(":");
-                    msg = p[0];
-                    roomIP = p[1];
+                while ((response = in.readLine()) != null) {
+
+                    if (response.contains(":")) {
+
+                        String[] p = response.split(":");
+
+                        fittingRoomServerIP = p[1];
+
+                        response = p[0];
+
+                        System.out.println("Server: " + response);
+                    }
+
+                    if (response.startsWith("Room Allocated")) {
+
+                        hasRoom = true;
+                        isWaiting = false;
+
+                        System.out.println(
+                                "Customer #" + clientID +
+                                        " enters fitting room <Server: " +
+                                        fittingRoomServerIP + ">");
+
+                        simulate();
+                    }
+
+                    else if (response.startsWith("Wait")) {
+
+                        isWaiting = true;
+
+                        System.out.println(
+                                "Customer #" + clientID +
+                                        " enters waiting area <Server: " +
+                                        fittingRoomServerIP + ">");
+                    }
+
+                    else if (response.startsWith("Full")) {
+
+                        System.out.println(
+                                "Customer #" + clientID +
+                                        " leaves store (full)");
+                    }
+
+                    else if (response.startsWith("Fitting Room Server Down")) {
+
+                        System.out.println("Server crashed — retrying");
+                        request();
+                    }
                 }
 
-                System.out.println("Client " + id + ": " + msg);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-                if (msg.contains("Server Down")) {
-                    request();
-                }
+    public void request() {
+        out.println("Request Room " + clientID);
+    }
+
+    public void release() {
+        out.println("Release Room " + clientID);
+    }
+
+    public void simulate() {
+
+        new Thread(() -> {
+
+            try {
+
+                Thread.sleep((int)(Math.random() * 3000));
+
+                release();
+
+                Thread.sleep(100);
+
+                System.out.println(
+                        "Customer #" + clientID +
+                                " Leaving Fitting Room...<Server: " +
+                                fittingRoomServerIP + ">");
+
+                out.println("Exit");
+
+                socket.close();
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
-        } catch (Exception ignored) {}
-    }
-
-    void request() {
-        out.println("Request Room " + id);
-    }
-
-    void release() {
-        out.println("Release Room " + id);
+        }).start();
     }
 
     public static void main(String[] args) {
 
-        int n = Integer.parseInt(args[0]);
+        int total = Integer.parseInt(args[0]);
 
-        for (int i = 1; i <= n; i++) {
+        for (int i = 1; i <= total; i++) {
 
             int id = i;
 
@@ -77,12 +148,11 @@ public class Client {
 
                 c.request();
 
-                try {
-                    Thread.sleep(3000);
-                    c.release();
-                } catch (Exception ignored) {}
-
             }).start();
+
+            try {
+                Thread.sleep((int)(Math.random() * 500));
+            } catch (Exception ignored) {}
         }
     }
 }
