@@ -217,7 +217,7 @@ public class CentralServer{
 				room.assignedClients.add(this); 
 			}
 
-			clientOut.println("Room Allocated"); 
+			clientOut.println("Room Allocated " + clientID + ":" + room.getFittingRoomIP()); 
 		}
 
 		
