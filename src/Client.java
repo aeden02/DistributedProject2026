@@ -6,6 +6,7 @@ public class Client{
     private BufferedReader br;//input
     private PrintWriter pw;//output
     private boolean hasRoom = false;
+    boolean isWaiting = false; 
 
     public int port;
     public int clientID; //This was private.
@@ -72,19 +73,26 @@ public class Client{
             this.fittingRoomServerIP = response.substring(response.indexOf(":") + 1); 
             System.out.println("Server: " + response.substring(0,response.indexOf(":")));
         }else{
+
+            if(this.fittingRoomServerIP == null){
+                this.fittingRoomServerIP = "Unavailable"; 
+            } 
+
             System.out.println("Server: " + response); 
         }
 
         //this.fittingRoomServerIP = response.substring(response.indexOf(":") + 1, response.length());
        // System.out.println("Server: " + response.substring(0,response.indexOf(":")));
-       
+
         if (response.startsWith("Room Allocated")) { //If Allocated, customer use the room.
             hasRoom = true;
+            isWaiting = false; 
             display("leaves waiting area and enters fitting room <Server: " + this.fittingRoomServerIP + ">");
             simulateFittingRoomUse();
+            
 
         } else if (response.startsWith("Wait")) { //If the customer waits, they sit in the waiting area for a room.
-
+            isWaiting = true; 
             display("enters the waiting area and takes a seat <Server: " + this.fittingRoomServerIP + ">");
 
         } else if (response.equals("Room Available")) { //If the central server sends a room available message, the customer is notified the room is available.
@@ -92,11 +100,27 @@ public class Client{
             display("notified that a fitting room is available <Server: " + this.fittingRoomServerIP + ">");
             requestFittingRoom();
 
-        } else if(response.equals("Full")) { //Customer leaves the store because no waiting seats or rooms are available.
+        } else if(response.startsWith("Full")) { //Customer leaves the store because no waiting seats or rooms are available.
             display("leaves the store (no space available) <Server: " + this.fittingRoomServerIP + ">");
             exit();
+        }else if(response.equals("No fitting rooms available")){
+            display("waiting for another fitting room server."); 
+
+        }else if(response.startsWith("Removed From Waiting Queue")){
+            display("removed from waiting queue");
+
+            //client no longer active in system
+            isWaiting = false;
+            hasRoom = false; 
             
-         }else{
+            //if want removed customers to leave. 
+            display("leaves the store after losing waiting chair.");
+            pw.println("Exit"); 
+            
+        
+        }else if(response.equals("Fitting Room Server Down")){
+            display("assigned fitting room server crashed."); 
+        }else{
 
           System.out.println("Unknown response :" + response);
         }
@@ -125,11 +149,20 @@ public class Client{
 
     //When client no longer wants to contact central server
     public void exit(){
-        pw.println("Exit");
         try{
-            pw.close();
-            br.close();
-            socket.close();
+            if(pw !=null){
+                pw.println("Exit");
+                pw.close(); 
+            }
+
+            if(br != null){
+                br.close(); 
+            }
+            
+            if(socket != null){
+                socket.close(); 
+            }
+            
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -150,6 +183,7 @@ public class Client{
             display("Leaving Fitting Room..."+ "<Server: " + this.fittingRoomServerIP + ">");
             exit(); 
 
+            return; 
 		} catch (InterruptedException e) {
     		e.printStackTrace();
 		}
@@ -186,8 +220,13 @@ public class Client{
                     //OTHERWISE, MAIN THREAD WILL EXIT AND CLOSE CONNECTION. 
                     try{
                         //Adding a timer for each customer to request a room.
-                        while(client.socket != null && !client.socket.isClosed()){
+                        while(client.hasRoom || client.isWaiting|| (client.socket != null && !client.socket.isClosed())){
                             Thread.sleep(100);
+
+                            //if client no longer has room or is waiting then force clean up. 
+                            if(!client.hasRoom && !client.isWaiting && client.socket != null && !client.socket.isClosed()){
+                                client.exit(); 
+                            }
                         }
                     }catch(Exception e){
                         e.printStackTrace();

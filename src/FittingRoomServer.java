@@ -12,15 +12,40 @@ public class FittingRoomServer {
     static int totalRooms;
 
     public static int replaceWaiting(int clientID){
-        for(Integer i: waitingQueue){
-            if(!priorityQueue.contains(i)){
-                
-                waitingQueue.add(clientID);
-                waitingQueue.remove(i);
 
-                return i;
+        int replacedClient = -1; 
+        
+        //make copy to safely remove from real queue
+        ArrayList<Integer> tempQueue = new ArrayList<>(waitingQueue);
+
+        for(Integer i: tempQueue){
+            
+            //remove dead clients
+            if(CentralServer.clientIDs.get(i)==null){
+                waitingQueue.remove(i);
+                priorityQueue.remove(i); 
+
+                continue; 
+            }
+
+            //find first normal waiting client
+            if(!priorityQueue.contains(i)){
+                replacedClient = i; 
+                break;
             }
         }
+    
+        if(replacedClient != -1){
+            waitingQueue.remove(Integer.valueOf(replacedClient));
+
+            //avoid duplicates 
+            if(!waitingQueue.contains(clientID)){
+                waitingQueue.add(clientID); 
+            }
+
+            return replacedClient; 
+        }
+        
 
         return -1;
     }
@@ -57,39 +82,71 @@ public class FittingRoomServer {
                 if (parts[0].equals("ALLOCATE") || parts[0].equals("PRIORITY")) {
 
                     int clientID = Integer.parseInt(parts[1]);
+                    if(parts[0].equals("PRIORITY")){
+                        if(waitingQueue.contains(clientID) || priorityQueue.contains(clientID)){
+                            pw.println("Wait " + clientID); 
+                            continue; 
+                        }
+                    }
 
                     if (rooms.tryAcquire()) {
 
                         pw.println("Allocated " + clientID);
                         System.out.println("Allocated " + clientID);
 
-                    }else if (waitingQueue.size() < waitMax) {
-
-                        waitingQueue.add(clientID);
-
-                        pw.println("Wait " + clientID);
-                        System.out.println("Wait " + clientID);
-
                     }else if (parts[0].equals("PRIORITY")) { //When fitting room shuts down, if a client was changing they will
-                        priorityQueue.add(clientID);         //have priority status over other clients
+                       
+                        if(waitingQueue.contains(clientID) || priorityQueue.contains(clientID)){
+                            pw.println("Wait " + clientID); 
+                            continue; 
+                        }
+                        if(!priorityQueue.contains(clientID)){
+                            priorityQueue.add(clientID);         //have priority status over other clients
+                        }
+                        
 
                         int replaced = replaceWaiting(clientID);
+
                         if(replaced != -1){
+                           
                             pw.println("Replaced " + replaced + " with " + clientID);
+                            
                             System.out.println("Replaced " + replaced + " with " + clientID);
-
+                            System.out.println("Priority client " + clientID + " replaced " + replaced); 
+                            
                         }
-                        else{
-                            priorityQueue.remove(clientID);         //if there are already prioritized clients, then leave angry
+                        else if(waitingQueue.size() < waitMax){
+
+                            //remove old copies
+                            waitingQueue.remove(Integer.valueOf(clientID));
+                            priorityQueue.remove(Integer.valueOf(clientID)); 
+
+                           //re-add once
+                           waitingQueue.add(clientID);
+                           priorityQueue.add(clientID); 
+                            
+                            pw.println("Wait " + clientID);
+
+                            System.out.println("Priority client waiting: " + clientID); 
+                        }else{
+
+                            priorityQueue.remove(Integer.valueOf(clientID));
                             pw.println("Full " + clientID);
-                            System.out.println("Full " + clientID);
+
+                            System.out.println("Full " +  clientID); 
                         }
 
+                    }else if (waitingQueue.size() < waitMax) {
+                        if(!waitingQueue.contains(clientID)){
+                            waitingQueue.add(clientID);
+                        }
                         
+                        pw.println("Wait " + clientID);
+                        System.out.println("Wait " + clientID);
                     }else {
 
-                        pw.println("Full " + clientID);
-                        System.out.println("Full " + clientID);
+                        pw.println("Full ");
+                        System.out.println("Full ");
                     }
 
                 }else if (parts[0].equals("RELEASE")) {
@@ -108,14 +165,22 @@ public class FittingRoomServer {
 
                     if (!waitingQueue.isEmpty()) {
 
-                        if (rooms.tryAcquire()) {
+  
+                        int nextClient;
+                        if(!priorityQueue.isEmpty()){
+                            nextClient = priorityQueue.poll(); 
 
-                            int nextClient = waitingQueue.poll();
-
-                            pw.println("Allocated " + nextClient);
-
-                            System.out.println("Promoted from queue: " + nextClient);
+                            waitingQueue.remove(Integer.valueOf(nextClient));
+                        }else{
+                            nextClient = waitingQueue.poll(); 
                         }
+
+                        priorityQueue.remove(Integer.valueOf(nextClient));
+
+                         pw.println("Promoted " + nextClient); 
+                         System.out.println("Promoted from queue: " + nextClient);
+
+                        
                     }else{
 						pw.println("Released."); 
 						System.out.println("WAITING QUEUE IS EMPTY"); 
