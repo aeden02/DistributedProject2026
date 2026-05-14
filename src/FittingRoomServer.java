@@ -8,40 +8,42 @@ public class FittingRoomServer {
     static Semaphore rooms;
     static int totalRooms;
 
-    static Queue<Integer> waitingQueue =
-            new LinkedList<>();
+    static Queue<Integer> waitingQueue = new LinkedList<>();
 
     public static void main(String[] args) throws Exception {
 
         totalRooms = Integer.parseInt(args[0]);
         rooms = new Semaphore(totalRooms);
 
-        Socket central =
-                new Socket("127.0.0.1", 50001);
+        System.out.println("Fitting Room Server started...");
+
+        Socket central = new Socket("127.0.0.1", 50001);
 
         BufferedReader br =
-                new BufferedReader(
-                        new InputStreamReader(central.getInputStream()));
+                new BufferedReader(new InputStreamReader(central.getInputStream()));
 
         PrintWriter pw =
                 new PrintWriter(central.getOutputStream(), true);
 
         while (true) {
 
-            String msg = br.readLine();
-            if (msg == null) break;
+            String message = br.readLine();
 
-            String[] p = msg.split(" ");
+            if (message == null) break;
+
+            String[] parts = message.split(" ");
 
             synchronized (FittingRoomServer.class) {
 
-                if (p[0].equals("ALLOCATE")) {
+                if (parts[0].equals("ALLOCATE")) {
 
-                    int id = Integer.parseInt(p[1]);
+                    int id = Integer.parseInt(parts[1]);
 
                     if (rooms.tryAcquire()) {
                         pw.println("Allocated " + id);
-                    } else {
+                    }
+
+                    else {
                         if (!waitingQueue.contains(id)) {
                             waitingQueue.add(id);
                         }
@@ -49,19 +51,24 @@ public class FittingRoomServer {
                     }
                 }
 
-                else if (p[0].equals("RELEASE")) {
+                else if (parts[0].equals("RELEASE")) {
 
-                    int id = Integer.parseInt(p[1]);
+                    int id = Integer.parseInt(parts[1]);
 
                     if (rooms.availablePermits() < totalRooms) {
                         rooms.release();
                     }
 
                     if (!waitingQueue.isEmpty()) {
+
                         int next = waitingQueue.poll();
+
                         rooms.tryAcquire();
+
                         pw.println("Promoted " + next);
-                    } else {
+                    }
+
+                    else {
                         pw.println("Released");
                     }
                 }
